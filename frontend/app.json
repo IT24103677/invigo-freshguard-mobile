@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "INVIGO",
+    "slug": "invigo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#0F172A"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.invigo.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0F172A"
+      },
+      "package": "com.invigo.app"
+    },
+    "web": {},
+    "plugins": [
+      "expo-asset",
+      "expo-font"
+    ]
+  }
+}

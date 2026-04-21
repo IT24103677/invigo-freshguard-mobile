@@ -1,0 +1,65 @@
+[
+  {
+    "id": 8,
+    "productId": 5,
+    "productName": "ANCHOR",
+    "discountPercent": 50,
+    "note": "tttt",
+    "active": true,
+    "createdAt": "2026-04-02T01:45:51.508226"
+  },
+  {
+    "id": 7,
+    "productId": 3,
+    "productName": "gjhgjhj",
+    "discountPercent": 90,
+    "note": null,
+    "active": true,
+    "createdAt": "2026-04-02T01:43:48.244229"
+  },
+  {
+    "id": 6,
+    "productId": 3,
+    "productName": "gjhgjhj",
+    "discountPercent": 50,
+    "note": "hghjh",
+    "active": true,
+    "createdAt": "2026-04-02T01:42:57.152946"
+  },
+  {
+    "id": 5,
+    "productId": 2,
+    "productName": "wet",
+    "discountPercent": 15,
+    "note": null,
+    "active": true,
+    "createdAt": "2026-04-02T01:42:51.487541"
+  },
+  {
+    "id": 4,
+    "productId": 1,
+    "productName": "milkrtyrtyrtyrty",
+    "discountPercent": 15,
+    "note": null,
+    "active": true,
+    "createdAt": "2026-04-02T01:40:12.300973"
+  },
+  {
+    "id": 2,
+    "productId": 2,
+    "productName": "wet",
+    "discountPercent": 7,
+    "note": "87",
+    "active": true,
+    "createdAt": "2026-04-02T00:16:18.071093"
+  },
+  {
+    "id": 1,
+    "productId": 1,
+    "productName": "milkrtyrtyrtyrty",
+    "discountPercent": 9,
+    "note": "hjgj",
+    "active": true,
+    "createdAt": "2026-04-02T00:01:22.142795"
+  }
+]
