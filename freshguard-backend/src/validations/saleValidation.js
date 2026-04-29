@@ -10,7 +10,6 @@ const saleItemSchema = Joi.object({
 });
 
 const createSaleSchema = Joi.object({
-  recordedBy: Joi.string().pattern(objectIdPattern).optional(),
   notes: Joi.string().allow("", null).optional(),
   customerName: Joi.string().allow("", null).optional(),
   customerEmail: Joi.string().email().allow("", null).optional(),
@@ -19,11 +18,18 @@ const createSaleSchema = Joi.object({
 });
 
 const voidSaleSchema = Joi.object({
-  voidedBy: Joi.string().pattern(objectIdPattern).optional(),
   voidReason: Joi.string().trim().min(3).required(),
 });
+
+const updateSaleSchema = Joi.object({
+  notes: Joi.string().allow("", null).optional(),
+  customerName: Joi.string().allow("", null).optional(),
+  customerEmail: Joi.string().email().allow("", null).optional(),
+  editReason: Joi.string().trim().min(3).required(),
+}).or("notes", "customerName", "customerEmail");
 
 module.exports = {
   createSaleSchema,
   voidSaleSchema,
+  updateSaleSchema,
 };

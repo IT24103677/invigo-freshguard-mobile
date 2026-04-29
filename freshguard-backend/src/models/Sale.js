@@ -161,6 +161,20 @@ const saleSchema = new mongoose.Schema(
       trim: true,
       default: null,
     },
+    editedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    editedAt: {
+      type: Date,
+      default: null,
+    },
+    editReason: {
+      type: String,
+      trim: true,
+      default: null,
+    },
   },
   {
     timestamps: true,

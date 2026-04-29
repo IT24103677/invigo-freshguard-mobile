@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const {
   createSaleSchema,
+  updateSaleSchema,
   voidSaleSchema,
 } = require("../validations/saleValidation");
 const saleService = require("../services/saleService");
@@ -22,7 +23,10 @@ const createSale = async (req, res) => {
       stripUnknown: true,
     });
 
-    const sale = await saleService.createSale(payload);
+    const sale = await saleService.createSale({
+      ...payload,
+      recordedBy: req.user._id,
+    });
 
     return res.status(201).json({
       success: true,
@@ -69,6 +73,36 @@ const getSaleById = async (req, res) => {
   }
 };
 
+const updateSale = async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid sale id.",
+      });
+    }
+
+    const payload = await updateSaleSchema.validateAsync(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const sale = await saleService.updateSale({
+      saleId: req.params.id,
+      updates: payload,
+      editedBy: req.user._id,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: sale,
+      message: "Sale updated successfully.",
+    });
+  } catch (error) {
+    return sendError(res, error);
+  }
+};
+
 const voidSale = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -86,7 +120,7 @@ const voidSale = async (req, res) => {
     const sale = await saleService.voidSale({
       saleId: req.params.id,
       voidReason: payload.voidReason,
-      voidedBy: payload.voidedBy,
+      voidedBy: req.user._id,
     });
 
     return res.status(200).json({
@@ -103,5 +137,6 @@ module.exports = {
   createSale,
   getSales,
   getSaleById,
+  updateSale,
   voidSale,
 };

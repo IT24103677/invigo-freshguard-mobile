@@ -69,6 +69,15 @@ const createSale = async (payload) => {
       discountTotal += gross - lineTotal;
     }
 
+    const grandTotal = Number((subTotal - discountTotal).toFixed(2));
+
+    if (payload.amountGiven != null && payload.amountGiven < grandTotal) {
+      throw createHttpError(
+        400,
+        "Amount given cannot be less than the grand total."
+      );
+    }
+
     const sale = await Sale.create(
       [
         {
@@ -80,11 +89,11 @@ const createSale = async (payload) => {
           amountGiven: payload.amountGiven ?? null,
           changeGiven:
             payload.amountGiven != null
-              ? Number((payload.amountGiven - (subTotal - discountTotal)).toFixed(2))
+              ? Number((payload.amountGiven - grandTotal).toFixed(2))
               : null,
           subTotal: Number(subTotal.toFixed(2)),
           discountTotal: Number(discountTotal.toFixed(2)),
-          grandTotal: Number((subTotal - discountTotal).toFixed(2)),
+          grandTotal,
           items: saleItems,
         },
       ],
@@ -132,6 +141,37 @@ const getSaleById = async (saleId) => {
     throw createHttpError(404, "Sale not found.");
   }
 
+  return sale;
+};
+
+const updateSale = async ({ saleId, updates, editedBy }) => {
+  const sale = await Sale.findById(saleId);
+
+  if (!sale) {
+    throw createHttpError(404, "Sale not found.");
+  }
+
+  if (sale.status !== "ACTIVE") {
+    throw createHttpError(409, "Only active sales can be updated.");
+  }
+
+  if (updates.notes !== undefined) {
+    sale.notes = updates.notes;
+  }
+
+  if (updates.customerName !== undefined) {
+    sale.customerName = updates.customerName;
+  }
+
+  if (updates.customerEmail !== undefined) {
+    sale.customerEmail = updates.customerEmail;
+  }
+
+  sale.editReason = updates.editReason;
+  sale.editedBy = editedBy ?? null;
+  sale.editedAt = new Date();
+
+  await sale.save();
   return sale;
 };
 
@@ -188,5 +228,6 @@ module.exports = {
   createSale,
   getSales,
   getSaleById,
+  updateSale,
   voidSale,
 };
