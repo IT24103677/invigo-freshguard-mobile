@@ -15,22 +15,18 @@ const productSchema = new mongoose.Schema(
     sku: {
       type: String,
       trim: true,
-      default: null,
     },
     barcode: {
       type: String,
       trim: true,
-      default: null,
     },
     brand: {
       type: String,
       trim: true,
-      default: null,
     },
     supplier: {
       type: String,
       trim: true,
-      default: null,
     },
     unitType: {
       type: String,
@@ -49,7 +45,6 @@ const productSchema = new mongoose.Schema(
     },
     imageUrl: {
       type: String,
-      default: null,
     },
     isActive: {
       type: Boolean,
@@ -67,7 +62,13 @@ const productSchema = new mongoose.Schema(
 );
 
 productSchema.index({ name: "text", category: "text" });
-productSchema.index({ sku: 1 }, { unique: true, sparse: true });
-productSchema.index({ barcode: 1 }, { unique: true, sparse: true });
+productSchema.index(
+  { sku: 1 },
+  { unique: true, partialFilterExpression: { sku: { $type: "string" } } }
+);
+productSchema.index(
+  { barcode: 1 },
+  { unique: true, partialFilterExpression: { barcode: { $type: "string" } } }
+);
 
 module.exports = mongoose.model("Product", productSchema);

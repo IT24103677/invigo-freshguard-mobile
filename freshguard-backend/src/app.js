@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 
+const batchRoutes = require("./routes/batchRoutes");
+const productRoutes = require("./routes/productRoutes");
 const saleRoutes = require("./routes/saleRoutes");
 
 const app = express();
@@ -17,6 +19,8 @@ app.get("/health", (req, res) => {
   });
 });
 
+app.use("/products", productRoutes);
+app.use("/batches", batchRoutes);
 app.use("/sales", saleRoutes);
 
 module.exports = app;
