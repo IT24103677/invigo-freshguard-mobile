@@ -1,0 +1,27 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Frontend
+Frontend/node_modules/
+Frontend/.expo/
+Frontend/.expo-shared/
+Frontend/web-build/
+Frontend/dist/
+Frontend/coverage/
+Frontend/.env
+Frontend/.env.*
+
+# Backend
+Backend/node_modules/
+Backend/coverage/
+Backend/.env
+Backend/.env.*
