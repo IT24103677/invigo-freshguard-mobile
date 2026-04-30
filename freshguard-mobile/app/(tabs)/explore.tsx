@@ -350,10 +350,15 @@ export default function SalesScreen() {
 
       if (!trimmedQuery) return true;
 
+      const matchesProductName = sale.items.some((item) =>
+        item.productNameSnapshot.toLowerCase().includes(trimmedQuery)
+      );
+
       return (
         sale.saleGroupId.toLowerCase().includes(trimmedQuery) ||
         (sale.customerName ?? "").toLowerCase().includes(trimmedQuery) ||
-        (sale.customerEmail ?? "").toLowerCase().includes(trimmedQuery)
+        (sale.customerEmail ?? "").toLowerCase().includes(trimmedQuery) ||
+        matchesProductName
       );
     });
   }, [sales, salesUsers, searchQuery, selectedFilter, selectedRoleFilter]);
@@ -466,7 +471,7 @@ export default function SalesScreen() {
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder="Search by bill ID, customer name, or email"
+            placeholder="Search by bill ID, customer, email, or product"
             placeholderTextColor={colors.outline}
             style={styles.searchInput}
           />
@@ -757,8 +762,8 @@ export default function SalesScreen() {
                 No sales match the current search and filter.
               </Text>
               <Text style={styles.emptySectionSubtext}>
-                Try clearing the current search, status, or advanced filters to
-                widen this sales view again.
+                Try a bill ID, customer detail, or product name, or clear the
+                current filters to widen this sales view again.
               </Text>
               <View style={styles.emptySectionActions}>
                 {hasSearchQuery ? (
