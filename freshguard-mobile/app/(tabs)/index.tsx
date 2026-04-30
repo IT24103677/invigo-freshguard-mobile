@@ -395,6 +395,10 @@ export default function PosScreen() {
             const stockStatus = getStockStatus(product);
             const expiryStatus = getExpiryStatus(product);
             const inCart = cart.find((item) => item.productId === product._id);
+            const sellableUnits = product.sellableUnits ?? 0;
+            const isUnavailable = sellableUnits <= 0;
+            const maxInCartReached =
+              !!inCart && inCart.quantity >= sellableUnits && sellableUnits > 0;
             const accentColor =
               stockStatus === "critical"
                 ? colors.terracotta
@@ -405,10 +409,16 @@ export default function PosScreen() {
             return (
               <Pressable
                 key={product._id}
-                onPress={() => addProduct(product)}
+                onPress={() => {
+                  if (!isUnavailable) {
+                    addProduct(product);
+                  }
+                }}
+                disabled={isUnavailable}
                 style={({ pressed }) => [
                   styles.productCard,
                   { borderLeftColor: accentColor },
+                  isUnavailable && styles.productCardDisabled,
                   pressed && styles.productCardPressed,
                 ]}
               >
@@ -459,7 +469,7 @@ export default function PosScreen() {
                     </View>
                     <View style={styles.inventoryMetaRow}>
                       <Text style={styles.inventoryMetaText}>
-                        {(product.sellableUnits ?? 0).toLocaleString()} units sellable
+                        {sellableUnits.toLocaleString()} units sellable
                       </Text>
                       <Text style={styles.inventoryMetaDivider}>|</Text>
                       <Text style={styles.inventoryMetaText}>
@@ -502,25 +512,56 @@ export default function PosScreen() {
                             </Text>
                             <Pressable
                               onPress={() => incrementProduct(product)}
+                              disabled={maxInCartReached}
                               hitSlop={8}
-                              style={styles.qtyStepperBtn}
+                              style={[
+                                styles.qtyStepperBtn,
+                                maxInCartReached && styles.qtyStepperBtnDisabled,
+                              ]}
                             >
                               <MaterialCommunityIcons
                                 name="plus"
                                 size={14}
-                                color={colors.primary}
+                                color={
+                                  maxInCartReached
+                                    ? colors.outline
+                                    : colors.primary
+                                }
                               />
                             </Pressable>
                           </View>
+                          {maxInCartReached ? (
+                            <Text style={styles.stockLimitText}>
+                              Max sellable quantity reached
+                            </Text>
+                          ) : null}
                         </View>
                       ) : (
-                        <View style={styles.addHint}>
+                        <View
+                          style={[
+                            styles.addHint,
+                            isUnavailable && styles.addHintDisabled,
+                          ]}
+                        >
                           <MaterialCommunityIcons
-                            name="plus-circle-outline"
+                            name={
+                              isUnavailable
+                                ? "close-circle-outline"
+                                : "plus-circle-outline"
+                            }
                             size={14}
-                            color={colors.textMuted}
+                            color={
+                              isUnavailable ? colors.terracotta : colors.textMuted
+                            }
                           />
-                          <Text style={styles.addHintText}>Add</Text>
+                          <Text
+                            style={[
+                              styles.addHintText,
+                              isUnavailable && styles.addHintTextDisabled,
+                            ]}
+                          >
+                            {isUnavailable ? "Unavailable" : "Add"}
+                          </Text>
                         </View>
                       )}
                     </View>
@@ -714,6 +755,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.outlineVariant + "40",
   },
+  productCardDisabled: {
+    opacity: 0.72,
+  },
   productCardPressed: { transform: [{ scale: 0.98 }], opacity: 0.9 },
   productBody: { flex: 1, gap: 4 },
   productRow: {
@@ -816,6 +860,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.surface,
   },
+  qtyStepperBtnDisabled: {
+    backgroundColor: colors.surfaceHigh,
+  },
   qtyStepperValue: {
     minWidth: 22,
     textAlign: "center",
@@ -823,8 +870,23 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: colors.primary,
   },
+  stockLimitText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: colors.secondary,
+  },
   addHint: { flexDirection: "row", alignItems: "center", gap: 4 },
+  addHintDisabled: {
+    backgroundColor: colors.terracottaSoft + "40",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
   addHintText: { fontSize: 12, color: colors.textMuted },
+  addHintTextDisabled: {
+    color: colors.terracotta,
+    fontWeight: "700",
+  },
   checkoutBar: {
     position: "absolute",
     left: 20,
