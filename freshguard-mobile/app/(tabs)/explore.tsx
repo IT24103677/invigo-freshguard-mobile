@@ -352,6 +352,10 @@ export default function SalesScreen() {
       : selectedRoleFilter === "MANAGER"
       ? "Managers"
       : "Staff";
+  const hasSearchQuery = searchQuery.trim().length > 0;
+  const hasStatusFilter = selectedFilter !== "ALL";
+  const hasAdvancedFilters =
+    selectedRange !== "ALL_TIME" || selectedRoleFilter !== "ALL_ROLES";
 
   if (loading) {
     return (
@@ -723,6 +727,45 @@ export default function SalesScreen() {
               <Text style={styles.emptySectionText}>
                 No sales match the current search and filter.
               </Text>
+              <Text style={styles.emptySectionSubtext}>
+                Try clearing the current search, status, or advanced filters to
+                widen this sales view again.
+              </Text>
+              <View style={styles.emptySectionActions}>
+                {hasSearchQuery ? (
+                  <Pressable
+                    onPress={() => setSearchQuery("")}
+                    style={styles.emptySectionActionBtn}
+                  >
+                    <Text style={styles.emptySectionActionText}>
+                      Clear Search
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {hasStatusFilter ? (
+                  <Pressable
+                    onPress={() => setSelectedFilter("ALL")}
+                    style={styles.emptySectionActionBtn}
+                  >
+                    <Text style={styles.emptySectionActionText}>
+                      Show All Statuses
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {hasAdvancedFilters ? (
+                  <Pressable
+                    onPress={() => {
+                      setSelectedRange("ALL_TIME");
+                      setSelectedRoleFilter("ALL_ROLES");
+                    }}
+                    style={styles.emptySectionActionBtn}
+                  >
+                    <Text style={styles.emptySectionActionText}>
+                      Clear Advanced Filters
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
             </View>
           ) : (
             <>
@@ -1174,6 +1217,33 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   emptySectionText: { fontSize: 14, color: colors.textMuted, textAlign: "center" },
+  emptySectionSubtext: {
+    fontSize: 12,
+    color: colors.textMuted,
+    textAlign: "center",
+    lineHeight: 18,
+    maxWidth: 280,
+  },
+  emptySectionActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: 4,
+  },
+  emptySectionActionBtn: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  emptySectionActionText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.primary,
+  },
   loadMoreButton: {
     marginTop: 4,
     flexDirection: "row",
