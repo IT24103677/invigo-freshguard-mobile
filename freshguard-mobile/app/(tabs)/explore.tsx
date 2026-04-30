@@ -1024,3 +1024,4 @@ const styles = StyleSheet.create({
   },
   emptySectionText: { fontSize: 14, color: colors.textMuted, textAlign: "center" },
 });
+
