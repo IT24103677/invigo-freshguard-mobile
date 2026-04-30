@@ -35,6 +35,13 @@ const FILTER_CHIPS = [
   "FROZEN",
   "SNACKS",
 ];
+const STOCK_FILTER_CHIPS = [
+  "ALL_STOCK",
+  "IN_STOCK",
+  "LOW_STOCK",
+  "UNAVAILABLE",
+] as const;
+type StockFilter = (typeof STOCK_FILTER_CHIPS)[number];
 
 function getStockStatus(product: Product): "critical" | "low-stock" | "in-stock" {
   const sellableUnits = product.sellableUnits ?? 0;
@@ -120,6 +127,7 @@ export default function PosScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("ALL");
+  const [stockFilter, setStockFilter] = useState<StockFilter>("ALL_STOCK");
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const hasActiveSearch = search.trim().length > 0;
@@ -159,10 +167,16 @@ export default function PosScreen() {
         const matchFilter =
           activeFilter === "ALL" ||
           product.category.toUpperCase() === activeFilter;
+        const stockStatus = getStockStatus(product);
+        const matchStockFilter =
+          stockFilter === "ALL_STOCK" ||
+          (stockFilter === "IN_STOCK" && stockStatus === "in-stock") ||
+          (stockFilter === "LOW_STOCK" && stockStatus === "low-stock") ||
+          (stockFilter === "UNAVAILABLE" && stockStatus === "critical");
 
-        return matchSearch && matchFilter && product.isActive;
+        return matchSearch && matchFilter && matchStockFilter && product.isActive;
       }),
-    [products, search, activeFilter]
+    [products, search, activeFilter, stockFilter]
   );
 
   const totalItems = products.length;
@@ -310,6 +324,44 @@ export default function PosScreen() {
           ))}
         </ScrollView>
 
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.stockChips}
+        >
+          {STOCK_FILTER_CHIPS.map((chip) => {
+            const isSelected = stockFilter === chip;
+            const label =
+              chip === "ALL_STOCK"
+                ? "All Stock"
+                : chip === "IN_STOCK"
+                ? "In Stock"
+                : chip === "LOW_STOCK"
+                ? "Low Stock"
+                : "Unavailable";
+
+            return (
+              <Pressable
+                key={chip}
+                onPress={() => setStockFilter(chip)}
+                style={[
+                  styles.stockChip,
+                  isSelected && styles.stockChipActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.stockChipLabel,
+                    isSelected && styles.stockChipLabelActive,
+                  ]}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
         <View style={styles.bento}>
           <View
             style={[
@@ -386,6 +438,14 @@ export default function PosScreen() {
                   style={styles.emptyActionButton}
                 >
                   <Text style={styles.emptyActionLabel}>Show All Categories</Text>
+                </Pressable>
+              ) : null}
+              {stockFilter !== "ALL_STOCK" ? (
+                <Pressable
+                  onPress={() => setStockFilter("ALL_STOCK")}
+                  style={styles.emptyActionButton}
+                >
+                  <Text style={styles.emptyActionLabel}>Show All Stock</Text>
                 </Pressable>
               ) : null}
             </View>
@@ -684,6 +744,27 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   chipLabelActive: { color: colors.white },
+  stockChips: { gap: 8, paddingBottom: 4 },
+  stockChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: colors.surfaceLow,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+  },
+  stockChipActive: {
+    backgroundColor: colors.primaryContainer,
+    borderColor: colors.primaryContainer,
+  },
+  stockChipLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.textMuted,
+  },
+  stockChipLabelActive: {
+    color: colors.primary,
+  },
   bento: { flexDirection: "row", gap: 14 },
   bentoCard: {
     flex: 1,
