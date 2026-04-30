@@ -86,6 +86,8 @@ export default function PosScreen() {
   });
 
   const addToCart = (product: Product) => {
+    const shouldOpenCart = cart.length === 0;
+
     setCart((prev) => {
       const existing = prev.find((i) => i.productId === product._id);
       if (existing) {
@@ -108,7 +110,9 @@ export default function PosScreen() {
         },
       ];
     });
-    setShowCart(true);
+    if (shouldOpenCart) {
+      setShowCart(true);
+    }
     setErrorMsg("");
   };
 
@@ -142,6 +146,7 @@ export default function PosScreen() {
     0
   );
   const grandTotal = +(cartSubTotal - cartDiscount).toFixed(2);
+  const totalCartUnits = cart.reduce((sum, item) => sum + item.quantity, 0);
   const parsedAmountGiven = amountGiven.trim() ? parseFloat(amountGiven) : null;
   const previewChange =
     parsedAmountGiven != null && !Number.isNaN(parsedAmountGiven)
@@ -416,6 +421,28 @@ export default function PosScreen() {
           {showCart && <View style={{ height: 340 }} />}
         </ScrollView>
 
+        {cart.length > 0 && !showCart && (
+          <Pressable
+            onPress={() => setShowCart(true)}
+            style={({ pressed }) => [
+              styles.peekCartBtn,
+              pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+            ]}
+          >
+            <View style={styles.peekCartLeft}>
+              <MaterialCommunityIcons
+                name="cart-outline"
+                size={18}
+                color={colors.white}
+              />
+              <Text style={styles.peekCartText}>
+                View Cart ({totalCartUnits} {totalCartUnits === 1 ? "unit" : "units"})
+              </Text>
+            </View>
+            <Text style={styles.peekCartTotal}>Rs. {grandTotal.toFixed(2)}</Text>
+          </Pressable>
+        )}
+
         {/* ── Cart panel (slide up) ── */}
         {cart.length > 0 && (
           <Animated.View
@@ -556,6 +583,17 @@ export default function PosScreen() {
                 {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
 
                 <View style={styles.cartActionsRow}>
+                  <Pressable
+                    onPress={() => setShowCart(false)}
+                    style={styles.continueAddingBtn}
+                  >
+                    <MaterialCommunityIcons
+                      name="playlist-plus"
+                      size={16}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.continueAddingText}>Continue Adding</Text>
+                  </Pressable>
                   <Pressable onPress={clearCart} style={styles.clearCartBtn}>
                     <MaterialCommunityIcons
                       name="trash-can-outline"
@@ -720,6 +758,36 @@ const styles = StyleSheet.create({
   inCartText: { fontSize: 12, fontWeight: "700", color: colors.primary },
   addHint: { flexDirection: "row", alignItems: "center", gap: 4 },
   addHintText: { fontSize: 12, color: colors.textMuted },
+  peekCartBtn: {
+    position: "absolute",
+    left: 20,
+    right: 20,
+    bottom: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    ...theme.shadows.card,
+  },
+  peekCartLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+  },
+  peekCartText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.white,
+  },
+  peekCartTotal: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: colors.white,
+  },
   // Cart panel
   cartPanel: {
     position: "absolute",
@@ -819,8 +887,26 @@ const styles = StyleSheet.create({
   paymentInput: { flex: 1, fontSize: 14, color: colors.text },
   cartActionsRow: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 6,
+    gap: 10,
+  },
+  continueAddingBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: colors.primaryContainer + "55",
+    borderWidth: 1,
+    borderColor: colors.primaryContainer,
+  },
+  continueAddingText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primary,
   },
   clearCartBtn: {
     flexDirection: "row",
