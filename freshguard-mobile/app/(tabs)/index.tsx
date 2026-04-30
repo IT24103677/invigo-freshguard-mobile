@@ -33,6 +33,14 @@ const STOCK_FILTER_CHIPS = [
 ] as const;
 type StockFilter = (typeof STOCK_FILTER_CHIPS)[number];
 
+type CartStockIssue = {
+  productId: string;
+  productName: string;
+  allowedQuantity: number;
+  currentQuantity: number;
+  reason: string;
+};
+
 function getStockStatus(product: Product): "critical" | "low-stock" | "in-stock" {
   const sellableUnits = product.sellableUnits ?? 0;
 
@@ -121,10 +129,64 @@ function formatCategoryLabel(category: string) {
     .join(" ");
 }
 
+function getCartStockIssues(
+  cart: ReturnType<typeof usePosCart>["cart"],
+  productsMap: Record<string, Product>
+) {
+  return cart.reduce<CartStockIssue[]>((issues, item) => {
+    const latestProduct = productsMap[item.productId];
+
+    if (!latestProduct || !latestProduct.isActive) {
+      issues.push({
+        productId: item.productId,
+        productName: item.productName,
+        allowedQuantity: 0,
+        currentQuantity: item.quantity,
+        reason: "This product is no longer available for sale.",
+      });
+      return issues;
+    }
+
+    const allowedQuantity = Math.max(0, latestProduct.sellableUnits ?? 0);
+
+    if (allowedQuantity <= 0) {
+      issues.push({
+        productId: item.productId,
+        productName: item.productName,
+        allowedQuantity,
+        currentQuantity: item.quantity,
+        reason: "This product is now out of stock.",
+      });
+      return issues;
+    }
+
+    if (item.quantity > allowedQuantity) {
+      issues.push({
+        productId: item.productId,
+        productName: item.productName,
+        allowedQuantity,
+        currentQuantity: item.quantity,
+        reason: `Only ${allowedQuantity} ${
+          allowedQuantity === 1 ? "unit is" : "units are"
+        } currently sellable.`,
+      });
+    }
+
+    return issues;
+  }, []);
+}
+
 export default function PosScreen() {
   const { setIsAuthenticated } = useAuthSession();
-  const { cart, addProduct, incrementProduct, decrementProduct, clearCart } =
-    usePosCart();
+  const {
+    cart,
+    addProduct,
+    incrementProduct,
+    decrementProduct,
+    updateQuantity,
+    removeProduct,
+    clearCart,
+  } = usePosCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -207,6 +269,18 @@ export default function PosScreen() {
     (product) => getStockStatus(product) === "critical"
   ).length;
   const filteredCount = filtered.length;
+  const productsMap = useMemo(
+    () =>
+      products.reduce<Record<string, Product>>((map, product) => {
+        map[product._id] = product;
+        return map;
+      }, {}),
+    [products]
+  );
+  const cartStockIssues = useMemo(
+    () => getCartStockIssues(cart, productsMap),
+    [cart, productsMap]
+  );
   const cartSubTotal = cart.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
     0
@@ -252,6 +326,21 @@ export default function PosScreen() {
         },
       ]
     );
+  };
+
+  const handleAutoAdjustCurrentBill = () => {
+    cartStockIssues.forEach((issue) => {
+      if (issue.allowedQuantity <= 0) {
+        removeProduct(issue.productId);
+        return;
+      }
+
+      const reduction = issue.currentQuantity - issue.allowedQuantity;
+
+      if (reduction > 0) {
+        updateQuantity(issue.productId, -reduction);
+      }
+    });
   };
 
   return (
@@ -497,8 +586,13 @@ export default function PosScreen() {
             const isUnavailable = sellableUnits <= 0;
             const maxInCartReached =
               !!inCart && inCart.quantity >= sellableUnits && sellableUnits > 0;
+            const cartIssue = cartStockIssues.find(
+              (issue) => issue.productId === product._id
+            );
             const accentColor =
-              stockStatus === "critical"
+              cartIssue
+                ? colors.terracotta
+                : stockStatus === "critical"
                 ? colors.terracotta
                 : stockStatus === "low-stock"
                 ? colors.secondary
@@ -632,6 +726,10 @@ export default function PosScreen() {
                             <Text style={styles.stockLimitText}>
                               Max sellable quantity reached
                             </Text>
+                          ) : cartIssue ? (
+                            <Text style={styles.stockConflictText}>
+                              {cartIssue.reason}
+                            </Text>
                           ) : null}
                         </View>
                       ) : (
@@ -669,19 +767,56 @@ export default function PosScreen() {
           })
         )}
 
-        <View style={{ height: cart.length > 0 ? 164 : 24 }} />
+        <View style={{ height: cart.length > 0 ? 228 : 24 }} />
       </ScrollView>
 
       {cart.length > 0 && (
         <View style={styles.checkoutDock}>
           <View style={styles.billToolsCard}>
-            <View style={styles.billToolsTextWrap}>
-              <Text style={styles.billToolsTitle}>Current Bill</Text>
-              <Text style={styles.billToolsMeta}>
-                {cart.length} {cart.length === 1 ? "product" : "products"} selected
-                {" · "}
-                {totalCartUnits} {totalCartUnits === 1 ? "unit" : "units"}
-              </Text>
+            <View style={styles.billToolsContent}>
+              <View style={styles.billToolsTextWrap}>
+                <Text style={styles.billToolsTitle}>Current Bill</Text>
+                <Text style={styles.billToolsMeta}>
+                  {cart.length} {cart.length === 1 ? "product" : "products"} selected
+                  {" · "}
+                  {totalCartUnits} {totalCartUnits === 1 ? "unit" : "units"}
+                </Text>
+              </View>
+              {cartStockIssues.length > 0 ? (
+                <View style={styles.billIssueCard}>
+                  <View style={styles.billIssueHeader}>
+                    <MaterialCommunityIcons
+                      name="alert-outline"
+                      size={16}
+                      color={colors.terracotta}
+                    />
+                    <Text style={styles.billIssueTitle}>Review Bill Stock</Text>
+                  </View>
+                  <Text style={styles.billIssueText}>
+                    {cartStockIssues[0].productName}: {cartStockIssues[0].reason}
+                  </Text>
+                  {cartStockIssues.length > 1 ? (
+                    <Text style={styles.billIssueCount}>
+                      +{cartStockIssues.length - 1} more item
+                      {cartStockIssues.length - 1 === 1 ? "" : "s"} need attention
+                    </Text>
+                  ) : null}
+                  <Pressable
+                    onPress={handleAutoAdjustCurrentBill}
+                    style={({ pressed }) => [
+                      styles.billIssueActionBtn,
+                      pressed && { opacity: 0.85 },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="auto-fix"
+                      size={14}
+                      color={colors.white}
+                    />
+                    <Text style={styles.billIssueActionText}>Auto Adjust Bill</Text>
+                  </Pressable>
+                </View>
+              ) : null}
             </View>
             <Pressable
               onPress={handleClearCurrentBill}
@@ -701,8 +836,10 @@ export default function PosScreen() {
 
           <Pressable
             onPress={() => router.push("/checkout")}
+            disabled={cartStockIssues.length > 0}
             style={({ pressed }) => [
               styles.checkoutBar,
+              cartStockIssues.length > 0 && styles.checkoutBarDisabled,
               pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
             ]}
           >
@@ -713,7 +850,11 @@ export default function PosScreen() {
                 color={colors.white}
               />
               <Text style={styles.checkoutText}>
-                Checkout ({totalCartUnits} {totalCartUnits === 1 ? "unit" : "units"})
+                {cartStockIssues.length > 0
+                  ? "Resolve Bill Stock First"
+                  : `Checkout (${totalCartUnits} ${
+                      totalCartUnits === 1 ? "unit" : "units"
+                    })`}
               </Text>
             </View>
             <Text style={styles.checkoutTotal}>Rs. {grandTotal.toFixed(2)}</Text>
@@ -1021,6 +1162,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.secondary,
   },
+  stockConflictText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: colors.terracotta,
+    maxWidth: 160,
+    textAlign: "right",
+  },
   addHint: { flexDirection: "row", alignItems: "center", gap: 4 },
   addHintDisabled: {
     backgroundColor: colors.terracottaSoft + "40",
@@ -1042,7 +1190,7 @@ const styles = StyleSheet.create({
   },
   billToolsCard: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 12,
     paddingHorizontal: 14,
@@ -1053,8 +1201,11 @@ const styles = StyleSheet.create({
     borderColor: colors.outlineVariant + "80",
     ...theme.shadows.card,
   },
-  billToolsTextWrap: {
+  billToolsContent: {
     flex: 1,
+    gap: 10,
+  },
+  billToolsTextWrap: {
     gap: 2,
   },
   billToolsTitle: {
@@ -1083,6 +1234,49 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.terracotta,
   },
+  billIssueCard: {
+    gap: 6,
+    backgroundColor: colors.terracottaSoft + "40",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.terracottaSoft,
+    padding: 10,
+  },
+  billIssueHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  billIssueTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.terracotta,
+  },
+  billIssueText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.terracotta,
+  },
+  billIssueCount: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.terracotta,
+  },
+  billIssueActionBtn: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
+  },
+  billIssueActionText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.white,
+  },
   checkoutBar: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1092,6 +1286,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     ...theme.shadows.card,
+  },
+  checkoutBarDisabled: {
+    opacity: 0.8,
   },
   checkoutLeft: {
     flexDirection: "row",
