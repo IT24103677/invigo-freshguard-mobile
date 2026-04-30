@@ -13,6 +13,14 @@ const generateSaleGroupId = () => {
   return `BILL-${year}-${random}`;
 };
 
+const auditUserProjection = "name email role";
+
+const populateSaleAuditFields = (query) =>
+  query
+    .populate("recordedBy", auditUserProjection)
+    .populate("voidedBy", auditUserProjection)
+    .populate("editedBy", auditUserProjection);
+
 const calculateLineTotal = ({ quantity, unitPriceSnapshot, discountRateApplied }) => {
   const gross = quantity * unitPriceSnapshot;
   const discountAmount = gross * (discountRateApplied / 100);
@@ -170,7 +178,7 @@ const getSales = async (query) => {
 };
 
 const getSaleById = async (saleId) => {
-  const sale = await Sale.findById(saleId);
+  const sale = await populateSaleAuditFields(Sale.findById(saleId));
 
   if (!sale) {
     throw createHttpError(404, "Sale not found.");
@@ -189,7 +197,7 @@ const attachSaleReceipt = async ({ saleId, receiptImageUrl }) => {
   sale.receiptImageUrl = receiptImageUrl;
   await sale.save();
 
-  return sale;
+  return populateSaleAuditFields(Sale.findById(sale._id));
 };
 
 const updateSale = async ({ saleId, updates, editedBy }) => {
@@ -220,7 +228,7 @@ const updateSale = async ({ saleId, updates, editedBy }) => {
   sale.editedAt = new Date();
 
   await sale.save();
-  return sale;
+  return populateSaleAuditFields(Sale.findById(sale._id));
 };
 
 const voidSale = async ({ saleId, voidReason, voidedBy }) => {
@@ -263,7 +271,7 @@ const voidSale = async ({ saleId, voidReason, voidedBy }) => {
     await sale.save({ session });
     await session.commitTransaction();
 
-    return sale;
+    return populateSaleAuditFields(Sale.findById(sale._id));
   } catch (error) {
     await session.abortTransaction();
     throw error;

@@ -1,3 +1,12 @@
+import type { UserRole } from "./auth";
+
+export interface SaleAuditUser {
+  _id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+}
+
 export interface SaleAllocation {
   batchId: string;
   qtyDeducted: number;
@@ -17,7 +26,7 @@ export interface SaleItem {
 export interface Sale {
   _id: string;
   saleGroupId: string;
-  recordedBy: string | null;
+  recordedBy: string | SaleAuditUser | null;
   status: "ACTIVE" | "VOID";
   notes: string | null;
   customerName: string | null;
@@ -29,10 +38,10 @@ export interface Sale {
   amountGiven: number | null;
   changeGiven: number | null;
   items: SaleItem[];
-  voidedBy: string | null;
+  voidedBy: string | SaleAuditUser | null;
   voidedAt: string | null;
   voidReason: string | null;
-  editedBy?: string | null;
+  editedBy?: string | SaleAuditUser | null;
   editedAt?: string | null;
   editReason?: string | null;
   saleDateTime: string;

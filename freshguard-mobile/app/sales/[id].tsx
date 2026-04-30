@@ -25,7 +25,7 @@ import {
 import { colors, saleStatusColors } from "@/src/theme/colors";
 import { theme } from "@/src/theme";
 import { AuthUser } from "@/src/types/auth";
-import { Sale, SaleItem } from "@/src/types/sale";
+import { Sale, SaleAuditUser, SaleItem } from "@/src/types/sale";
 import { ProductImage } from "@/components/ui/product-image";
 
 function formatDate(dateStr: string) {
@@ -44,6 +44,18 @@ function formatDateTime(dateStr: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatAuditUser(user: string | SaleAuditUser | null | undefined) {
+  if (!user) {
+    return "N/A";
+  }
+
+  if (typeof user === "string") {
+    return user;
+  }
+
+  return `${user.name} (${user.role})`;
 }
 
 function SaleItemCard({ item }: { item: SaleItem }) {
@@ -704,7 +716,7 @@ export default function SaleDetailsScreen() {
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
               <Text style={styles.infoKey}>Recorded By</Text>
-              <Text style={styles.infoVal}>{sale.recordedBy ?? "N/A"}</Text>
+              <Text style={styles.infoVal}>{formatAuditUser(sale.recordedBy)}</Text>
             </View>
             {isVoid && (
               <>
@@ -713,7 +725,7 @@ export default function SaleDetailsScreen() {
                   <Text
                     style={[styles.infoVal, { color: colors.terracotta }]}
                   >
-                    {sale.voidedBy ?? "N/A"}
+                    {formatAuditUser(sale.voidedBy)}
                   </Text>
                 </View>
                 {sale.voidedAt && (
@@ -738,7 +750,7 @@ export default function SaleDetailsScreen() {
               <>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoKey}>Edited By</Text>
-                  <Text style={styles.infoVal}>{sale.editedBy}</Text>
+                  <Text style={styles.infoVal}>{formatAuditUser(sale.editedBy)}</Text>
                 </View>
                 {sale.editedAt && (
                   <View style={styles.infoRow}>
