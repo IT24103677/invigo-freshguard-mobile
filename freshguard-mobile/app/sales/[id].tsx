@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  Share,
   ScrollView,
   StyleSheet,
   Text,
@@ -56,6 +57,37 @@ function formatAuditUser(user: string | SaleAuditUser | null | undefined) {
   }
 
   return `${user.name} (${user.role})`;
+}
+
+function buildReceiptShareText(sale: Sale) {
+  const itemLines = sale.items
+    .map(
+      (item) =>
+        `- ${item.productNameSnapshot} x${item.quantity} = Rs. ${item.lineTotal.toFixed(2)}`
+    )
+    .join("\n");
+
+  return [
+    `Invigo FreshGuard Receipt`,
+    `Bill: ${sale.saleGroupId}`,
+    `Date: ${formatDateTime(sale.saleDateTime)}`,
+    `Status: ${sale.status}`,
+    "",
+    "Items:",
+    itemLines,
+    "",
+    `Subtotal: Rs. ${sale.subTotal.toFixed(2)}`,
+    `Discount: Rs. ${sale.discountTotal.toFixed(2)}`,
+    `Grand Total: Rs. ${sale.grandTotal.toFixed(2)}`,
+    sale.amountGiven != null
+      ? `Paid: Rs. ${sale.amountGiven.toFixed(2)} | Change: Rs. ${(sale.changeGiven ?? 0).toFixed(2)}`
+      : null,
+    sale.customerName ? `Customer: ${sale.customerName}` : null,
+    sale.customerEmail ? `Email: ${sale.customerEmail}` : null,
+    sale.notes ? `Notes: ${sale.notes}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function SaleItemCard({ item }: { item: SaleItem }) {
@@ -320,6 +352,19 @@ export default function SaleDetailsScreen() {
     }
   };
 
+  const handleShareReceipt = async () => {
+    if (!sale) return;
+
+    try {
+      await Share.share({
+        message: buildReceiptShareText(sale),
+        title: sale.saleGroupId,
+      });
+    } catch {
+      setErrorMessage("Failed to open the share sheet.");
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -403,6 +448,20 @@ export default function SaleDetailsScreen() {
               </View>
             </View>
           </View>
+          <Pressable
+            onPress={handleShareReceipt}
+            style={({ pressed }) => [
+              styles.shareBtn,
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="share-variant-outline"
+              size={18}
+              color={colors.primary}
+            />
+            <Text style={styles.shareBtnText}>Share Receipt</Text>
+          </Pressable>
         </View>
 
         <View style={styles.financialBento}>
@@ -943,6 +1002,23 @@ const styles = StyleSheet.create({
     ...theme.shadows.card,
   },
   heroWrap: { gap: 12, marginBottom: 4 },
+  shareBtn: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.primaryContainer + "55",
+    borderWidth: 1,
+    borderColor: colors.primaryContainer,
+  },
+  shareBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primary,
+  },
   heroTextBlock: { gap: 4, flex: 1 },
   heroEyebrow: {
     fontSize: 10,
