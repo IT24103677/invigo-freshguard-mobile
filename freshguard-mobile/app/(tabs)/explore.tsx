@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 
 import { getCurrentUser, getSalesUsers, logoutUser } from "@/src/api/auth";
 import { useAuthSession } from "@/src/context/auth-session";
@@ -26,6 +26,21 @@ import { AuthUser } from "@/src/types/auth";
 type SalesFilter = "ALL" | "ACTIVE" | "VOID";
 type DateRangeFilter = "ALL_TIME" | "TODAY" | "THIS_WEEK" | "THIS_MONTH";
 type RoleFilter = "ALL_ROLES" | "ADMIN" | "MANAGER" | "STAFF";
+
+function parseStatusParam(value: unknown): SalesFilter | null {
+  return value === "ALL" || value === "ACTIVE" || value === "VOID"
+    ? value
+    : null;
+}
+
+function parseRangeParam(value: unknown): DateRangeFilter | null {
+  return value === "ALL_TIME" ||
+    value === "TODAY" ||
+    value === "THIS_WEEK" ||
+    value === "THIS_MONTH"
+    ? value
+    : null;
+}
 
 function formatRelativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -190,6 +205,7 @@ function SaleCard({ sale, onPress }: SaleCardProps) {
 }
 
 export default function SalesScreen() {
+  const params = useLocalSearchParams<{ range?: string; status?: string }>();
   const { setIsAuthenticated } = useAuthSession();
   const [sales, setSales] = useState<Sale[]>([]);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -208,6 +224,19 @@ export default function SalesScreen() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMoreSales, setHasMoreSales] = useState(false);
+
+  useEffect(() => {
+    const rangeFromParams = parseRangeParam(params.range);
+    const statusFromParams = parseStatusParam(params.status);
+
+    if (rangeFromParams) {
+      setSelectedRange(rangeFromParams);
+    }
+
+    if (statusFromParams) {
+      setSelectedFilter(statusFromParams);
+    }
+  }, [params.range, params.status]);
 
   const loadSales = useCallback(async (options?: {
     isRefresh?: boolean;

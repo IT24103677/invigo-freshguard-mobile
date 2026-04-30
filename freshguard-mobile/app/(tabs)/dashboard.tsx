@@ -147,6 +147,19 @@ export default function DashboardScreen() {
     ]);
   };
 
+  const openSalesWithPreset = (preset?: {
+    range?: DashboardRange;
+    status?: "ALL" | "ACTIVE" | "VOID";
+  }) => {
+    router.push({
+      pathname: "/explore",
+      params: {
+        range: preset?.range,
+        status: preset?.status,
+      },
+    });
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
@@ -358,7 +371,12 @@ export default function DashboardScreen() {
                   </Pressable>
 
                   <Pressable
-                    onPress={() => router.push("/explore")}
+                    onPress={() =>
+                      openSalesWithPreset({
+                        range: selectedRange,
+                        status: "ACTIVE",
+                      })
+                    }
                     style={({ pressed }) => [
                       styles.quickActionBtn,
                       pressed && styles.quickActionBtnPressed,
@@ -369,7 +387,7 @@ export default function DashboardScreen() {
                       size={18}
                       color={colors.primary}
                     />
-                    <Text style={styles.quickActionBtnText}>View Sales</Text>
+                    <Text style={styles.quickActionBtnText}>View Active Sales</Text>
                   </Pressable>
 
                   {latestSaleId ? (
@@ -397,7 +415,14 @@ export default function DashboardScreen() {
               <View style={styles.latestCard}>
                 <View style={styles.sectionHead}>
                   <Text style={styles.sectionTitle}>Latest Active Sale</Text>
-                  <Pressable onPress={() => router.push("/explore")}>
+                  <Pressable
+                    onPress={() =>
+                      openSalesWithPreset({
+                        range: selectedRange,
+                        status: "ACTIVE",
+                      })
+                    }
+                  >
                     <Text style={styles.linkText}>View Sales</Text>
                   </Pressable>
                 </View>
