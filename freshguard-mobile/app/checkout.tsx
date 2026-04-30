@@ -24,6 +24,10 @@ import { theme } from "@/src/theme";
 import { CartItem } from "@/components/ui/cart-item";
 import { BrandMark } from "@/components/ui/brand-mark";
 
+function generateClientRequestKey() {
+  return `sale-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export default function CheckoutScreen() {
   const {
     cart,
@@ -40,6 +44,9 @@ export default function CheckoutScreen() {
     useState<ImagePicker.ImagePickerAsset | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [clientRequestKey, setClientRequestKey] = useState(() =>
+    generateClientRequestKey()
+  );
 
   const cartSubTotal = useMemo(
     () => cart.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
@@ -79,6 +86,7 @@ export default function CheckoutScreen() {
           setCustomerEmail("");
           setNotes("");
           setReceiptAsset(null);
+          setClientRequestKey(generateClientRequestKey());
           setErrorMsg("");
           router.replace("/(tabs)");
         },
@@ -160,6 +168,7 @@ export default function CheckoutScreen() {
       setErrorMsg("");
 
       const sale = await createSale({
+        clientRequestKey,
         customerName: customerName.trim() || undefined,
         customerEmail: customerEmail.trim() || undefined,
         notes: notes.trim() || undefined,
@@ -200,12 +209,21 @@ export default function CheckoutScreen() {
               setCustomerEmail("");
               setNotes("");
               setReceiptAsset(null);
+              setClientRequestKey(generateClientRequestKey());
               router.replace("/(tabs)");
             },
           },
         ]
       );
     } catch (err: any) {
+      if (err?.response?.status === 409) {
+        setErrorMsg(
+          err?.response?.data?.message ??
+            "Possible duplicate sale detected. Check Sales before retrying."
+        );
+        return;
+      }
+
       setErrorMsg(
         err?.response?.data?.message ?? err?.message ?? "Failed to record sale."
       );

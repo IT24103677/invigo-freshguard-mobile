@@ -173,4 +173,50 @@ describe("Sales checkout flow", () => {
     const updatedSale = await Sale.findById(saleResponse.body.data._id);
     expect(updatedSale.receiptImageUrl).toContain("/uploads/receipts/");
   });
+
+  it("rejects duplicate checkout submissions with the same request key", async () => {
+    const { token } = await createManager();
+    const { product } = await createProductWithBatch(10);
+    const clientRequestKey = "sale-request-test-001";
+
+    await request(app)
+      .post("/sales")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        clientRequestKey,
+        amountGiven: 1000,
+        items: [
+          {
+            productId: product._id.toString(),
+            quantity: 1,
+            discountRateApplied: 0,
+          },
+        ],
+      })
+      .expect(201);
+
+    const duplicateResponse = await request(app)
+      .post("/sales")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        clientRequestKey,
+        amountGiven: 1000,
+        items: [
+          {
+            productId: product._id.toString(),
+            quantity: 1,
+            discountRateApplied: 0,
+          },
+        ],
+      })
+      .expect(409);
+
+    const saleCount = await Sale.countDocuments();
+
+    expect(duplicateResponse.body.success).toBe(false);
+    expect(duplicateResponse.body.message).toBe(
+      "Possible duplicate sale detected. Refresh the sales history before retrying."
+    );
+    expect(saleCount).toBe(1);
+  });
 });

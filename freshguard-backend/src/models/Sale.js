@@ -86,6 +86,11 @@ const saleSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    clientRequestKey: {
+      type: String,
+      trim: true,
+      default: null,
+    },
     status: {
       type: String,
       enum: ["ACTIVE", "VOID"],
@@ -182,5 +187,15 @@ const saleSchema = new mongoose.Schema(
 );
 
 saleSchema.index({ recordedBy: 1, saleDateTime: -1 });
+saleSchema.index(
+  { recordedBy: 1, clientRequestKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      recordedBy: { $exists: true, $type: "objectId" },
+      clientRequestKey: { $exists: true, $type: "string" },
+    },
+  }
+);
 
 module.exports = mongoose.model("Sale", saleSchema);

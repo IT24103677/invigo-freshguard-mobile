@@ -9,6 +9,7 @@ interface CreateSaleItemInput {
 }
 
 interface CreateSaleInput {
+  clientRequestKey?: string;
   notes?: string;
   customerName?: string;
   customerEmail?: string;

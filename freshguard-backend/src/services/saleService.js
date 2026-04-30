@@ -25,6 +25,20 @@ const createSale = async (payload) => {
   try {
     session.startTransaction();
 
+    if (payload.clientRequestKey && payload.recordedBy) {
+      const existingSale = await Sale.findOne({
+        recordedBy: payload.recordedBy,
+        clientRequestKey: payload.clientRequestKey,
+      }).session(session);
+
+      if (existingSale) {
+        throw createHttpError(
+          409,
+          "Possible duplicate sale detected. Refresh the sales history before retrying."
+        );
+      }
+    }
+
     const saleItems = [];
     let subTotal = 0;
     let discountTotal = 0;
@@ -83,6 +97,7 @@ const createSale = async (payload) => {
         {
           saleGroupId: generateSaleGroupId(),
           recordedBy: payload.recordedBy ?? null,
+          clientRequestKey: payload.clientRequestKey ?? null,
           notes: payload.notes ?? null,
           customerName: payload.customerName ?? null,
           customerEmail: payload.customerEmail ?? null,

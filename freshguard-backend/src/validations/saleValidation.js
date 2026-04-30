@@ -10,6 +10,7 @@ const saleItemSchema = Joi.object({
 });
 
 const createSaleSchema = Joi.object({
+  clientRequestKey: Joi.string().trim().min(8).max(100).optional(),
   notes: Joi.string().allow("", null).optional(),
   customerName: Joi.string().allow("", null).optional(),
   customerEmail: Joi.string().email().allow("", null).optional(),
