@@ -25,16 +25,6 @@ import { ProductImage } from "@/components/ui/product-image";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { BrandMark } from "@/components/ui/brand-mark";
 
-const FILTER_CHIPS = [
-  "ALL",
-  "DAIRY",
-  "PRODUCE",
-  "BAKERY",
-  "BEVERAGES",
-  "MEAT",
-  "FROZEN",
-  "SNACKS",
-];
 const STOCK_FILTER_CHIPS = [
   "ALL_STOCK",
   "IN_STOCK",
@@ -119,6 +109,18 @@ function matchesProductSearch(product: Product, rawSearch: string) {
   return searchableFields.some((field) => field.includes(query));
 }
 
+function normalizeCategoryKey(category?: string | null) {
+  return (category ?? "").trim().toUpperCase();
+}
+
+function formatCategoryLabel(category: string) {
+  return category
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 export default function PosScreen() {
   const { setIsAuthenticated } = useAuthSession();
   const { cart, addProduct, incrementProduct, decrementProduct } = usePosCart();
@@ -160,13 +162,33 @@ export default function PosScreen() {
     }, [loadProducts])
   );
 
+  const categoryChips = useMemo(() => {
+    const categories = Array.from(
+      new Set(
+        products
+          .map((product) => product.category)
+          .filter(Boolean)
+          .map((category) => normalizeCategoryKey(category))
+          .filter((category) => category.length > 0)
+      )
+    ).sort((a, b) => a.localeCompare(b));
+
+    return ["ALL", ...categories];
+  }, [products]);
+
+  useEffect(() => {
+    if (activeFilter !== "ALL" && !categoryChips.includes(activeFilter)) {
+      setActiveFilter("ALL");
+    }
+  }, [activeFilter, categoryChips]);
+
   const filtered = useMemo(
     () =>
       products.filter((product) => {
         const matchSearch = matchesProductSearch(product, search);
         const matchFilter =
           activeFilter === "ALL" ||
-          product.category.toUpperCase() === activeFilter;
+          normalizeCategoryKey(product.category) === activeFilter;
         const stockStatus = getStockStatus(product);
         const matchStockFilter =
           stockFilter === "ALL_STOCK" ||
@@ -306,7 +328,7 @@ export default function PosScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chips}
         >
-          {FILTER_CHIPS.map((chip) => (
+          {categoryChips.map((chip) => (
             <Pressable
               key={chip}
               onPress={() => setActiveFilter(chip)}
@@ -318,7 +340,7 @@ export default function PosScreen() {
                   activeFilter === chip && styles.chipLabelActive,
                 ]}
               >
-                {chip}
+                {chip === "ALL" ? "All" : formatCategoryLabel(chip)}
               </Text>
             </Pressable>
           ))}
