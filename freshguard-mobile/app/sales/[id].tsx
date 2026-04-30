@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -19,7 +19,6 @@ import { theme } from "@/src/theme";
 import { AuthUser } from "@/src/types/auth";
 import { Sale, SaleItem } from "@/src/types/sale";
 import { ProductImage } from "@/components/ui/product-image";
-import { StatusBadge } from "@/components/ui/status-badge";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -103,7 +102,7 @@ export default function SaleDetailsScreen() {
   const [isVoiding, setIsVoiding] = useState(false);
   const [showVoidPanel, setShowVoidPanel] = useState(false);
 
-  const loadSale = async () => {
+  const loadSale = useCallback(async () => {
     if (!id) { setErrorMessage("Sale ID is missing."); setLoading(false); return; }
     try {
       setLoading(true);
@@ -119,9 +118,9 @@ export default function SaleDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  useEffect(() => { loadSale(); }, [id]);
+  useEffect(() => { loadSale(); }, [loadSale]);
 
   const canVoid =
     sale?.status === "ACTIVE" &&
@@ -172,8 +171,6 @@ export default function SaleDetailsScreen() {
 
   const statusColors = saleStatusColors[sale.status];
   const isVoid = sale.status === "VOID";
-  const firstItem = sale.items[0];
-
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       {/* ── Top app bar ── */}

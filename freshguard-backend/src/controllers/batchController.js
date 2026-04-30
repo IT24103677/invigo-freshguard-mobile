@@ -29,7 +29,10 @@ const createBatch = async (req, res) => {
       });
     }
 
-    const batch = await batchService.createBatch(payload);
+    const batch = await batchService.createBatch({
+      ...payload,
+      createdBy: req.user?._id ?? null,
+    });
 
     return res.status(201).json({
       success: true,

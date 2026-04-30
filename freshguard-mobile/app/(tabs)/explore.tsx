@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -13,11 +13,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
+import { logoutUser } from "@/src/api/auth";
+import { useAuthSession } from "@/src/context/auth-session";
 import { getSales } from "@/src/api/sales";
 import { colors, saleStatusColors } from "@/src/theme/colors";
 import { theme } from "@/src/theme";
 import { Sale } from "@/src/types/sale";
-import { ProductImage } from "@/components/ui/product-image";
+import { BrandMark } from "@/components/ui/brand-mark";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -94,14 +96,20 @@ function RecentSaleCard({ sale, onPress }: SaleCardProps) {
 // ── main screen ───────────────────────────────────────────────────────────────
 
 export default function ActionCenterScreen() {
+  const { setIsAuthenticated } = useAuthSession();
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const loadSales = useCallback(async (isRefresh = false) => {
     try {
-      isRefresh ? setRefreshing(true) : setLoading(true);
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setErrorMsg("");
       const data = await getSales();
       setSales(data);
@@ -116,6 +124,26 @@ export default function ActionCenterScreen() {
   useEffect(() => {
     loadSales();
   }, [loadSales]);
+
+  const handleLogout = () => {
+    Alert.alert("Log Out", "Do you want to end your current session?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Log Out",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setIsLoggingOut(true);
+            await logoutUser();
+            setIsAuthenticated(false);
+            router.replace("/login");
+          } finally {
+            setIsLoggingOut(false);
+          }
+        },
+      },
+    ]);
+  };
 
   const voidSales = sales.filter((s) => s.status === "VOID");
   const activeSales = sales.filter((s) => s.status === "ACTIVE");
@@ -137,12 +165,31 @@ export default function ActionCenterScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <MaterialCommunityIcons name="map-marker-outline" size={20} color={colors.primary} />
+          <BrandMark size={24} />
           <Text style={styles.appTitle}>Invigo FreshGuard</Text>
         </View>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>SL</Text>
-        </View>
+        <Pressable
+          onPress={handleLogout}
+          disabled={isLoggingOut}
+          style={({ pressed }) => [
+            styles.logoutButton,
+            pressed && styles.logoutButtonPressed,
+            isLoggingOut && styles.logoutButtonDisabled,
+          ]}
+        >
+          {isLoggingOut ? (
+            <ActivityIndicator size="small" color={colors.terracotta} />
+          ) : (
+            <>
+              <MaterialCommunityIcons
+                name="logout-variant"
+                size={16}
+                color={colors.terracotta}
+              />
+              <Text style={styles.logoutText}>Log Out</Text>
+            </>
+          )}
+        </Pressable>
       </View>
 
       <ScrollView
@@ -214,7 +261,7 @@ export default function ActionCenterScreen() {
                   </View>
                   {sale.voidReason ? (
                     <Text style={styles.actionCardReason} numberOfLines={1}>
-                      "{sale.voidReason}"
+                      &quot;{sale.voidReason}&quot;
                     </Text>
                   ) : null}
                 </View>
@@ -253,12 +300,12 @@ export default function ActionCenterScreen() {
 
         {/* ── Quick Stats ── */}
         <View style={styles.section}>
-          <View style={styles.sectionHeading}>
-            <MaterialCommunityIcons name="chart-donut" size={22} color={colors.primary} />
-            <Text style={[styles.sectionTitle, { color: colors.primary }]}>
-              Today's Overview
-            </Text>
-          </View>
+            <View style={styles.sectionHeading}>
+              <MaterialCommunityIcons name="chart-donut" size={22} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.primary }]}>
+                Today&apos;s Overview
+              </Text>
+            </View>
           <View style={styles.statsGrid}>
             <View style={[styles.statCard, { backgroundColor: colors.primaryContainer }]}>
               <Text style={styles.statValue}>{activeSales.length}</Text>
@@ -303,15 +350,28 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   appTitle: { fontSize: 18, fontWeight: "700", color: colors.primary },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.primaryContainer,
+  logoutButton: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 6,
+    backgroundColor: colors.terracottaSoft + "80",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: colors.terracottaSoft,
   },
-  avatarText: { fontSize: 12, fontWeight: "800", color: colors.onPrimaryContainer },
+  logoutButtonPressed: {
+    opacity: 0.85,
+  },
+  logoutButtonDisabled: {
+    opacity: 0.7,
+  },
+  logoutText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.terracotta,
+  },
   scroll: { padding: 20, gap: 4 },
   heroSection: {
     flexDirection: "row",

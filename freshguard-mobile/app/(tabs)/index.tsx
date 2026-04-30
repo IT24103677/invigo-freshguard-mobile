@@ -14,7 +14,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
 
+import { logoutUser } from "@/src/api/auth";
+import { useAuthSession } from "@/src/context/auth-session";
 import { getProducts } from "@/src/api/products";
 import { createSale } from "@/src/api/sales";
 import { colors } from "@/src/theme/colors";
@@ -23,6 +26,7 @@ import { Product } from "@/src/types/product";
 import { ProductImage } from "@/components/ui/product-image";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { CartItem, CartLineItem } from "@/components/ui/cart-item";
+import { BrandMark } from "@/components/ui/brand-mark";
 
 const FILTER_CHIPS = ["ALL", "DAIRY", "PRODUCE", "BAKERY", "BEVERAGES", "MEAT", "FROZEN", "SNACKS"];
 
@@ -32,6 +36,7 @@ function getProductStatus(product: Product): "critical" | "urgent" | "fresh" | "
 }
 
 export default function PosScreen() {
+  const { setIsAuthenticated } = useAuthSession();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -42,6 +47,7 @@ export default function PosScreen() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const cartSlide = useRef(new Animated.Value(0)).current;
 
@@ -65,7 +71,7 @@ export default function PosScreen() {
       tension: 60,
       friction: 10,
     }).start();
-  }, [showCart]);
+  }, [cartSlide, showCart]);
 
   const filtered = products.filter((p) => {
     const matchSearch =
@@ -177,6 +183,26 @@ export default function PosScreen() {
     }
   };
 
+  const handleLogout = () => {
+    Alert.alert("Log Out", "Do you want to end your current session?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Log Out",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setIsLoggingOut(true);
+            await logoutUser();
+            setIsAuthenticated(false);
+            router.replace("/login");
+          } finally {
+            setIsLoggingOut(false);
+          }
+        },
+      },
+    ]);
+  };
+
   const cartTranslateY = cartSlide.interpolate({
     inputRange: [0, 1],
     outputRange: [400, 0],
@@ -194,12 +220,31 @@ export default function PosScreen() {
         {/* ── Header ── */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <MaterialCommunityIcons name="map-marker-outline" size={20} color={colors.primary} />
+            <BrandMark size={24} />
             <Text style={styles.appTitle}>Invigo FreshGuard</Text>
           </View>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>SL</Text>
-          </View>
+          <Pressable
+            onPress={handleLogout}
+            disabled={isLoggingOut}
+            style={({ pressed }) => [
+              styles.logoutButton,
+              pressed && styles.logoutButtonPressed,
+              isLoggingOut && styles.logoutButtonDisabled,
+            ]}
+          >
+            {isLoggingOut ? (
+              <ActivityIndicator size="small" color={colors.terracotta} />
+            ) : (
+              <>
+                <MaterialCommunityIcons
+                  name="logout-variant"
+                  size={16}
+                  color={colors.terracotta}
+                />
+                <Text style={styles.logoutText}>Log Out</Text>
+              </>
+            )}
+          </Pressable>
         </View>
 
         <ScrollView
@@ -461,15 +506,28 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   appTitle: { fontSize: 18, fontWeight: "700", color: colors.primary },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.primaryContainer,
+  logoutButton: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 6,
+    backgroundColor: colors.terracottaSoft + "80",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: colors.terracottaSoft,
   },
-  avatarText: { fontSize: 12, fontWeight: "800", color: colors.onPrimaryContainer },
+  logoutButtonPressed: {
+    opacity: 0.85,
+  },
+  logoutButtonDisabled: {
+    opacity: 0.7,
+  },
+  logoutText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.terracotta,
+  },
   scroll: { padding: 20, gap: 14, paddingBottom: 32 },
   searchWrap: {
     flexDirection: "row",

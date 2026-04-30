@@ -1,12 +1,9 @@
 import React from "react";
-import { Tabs, useRouter } from "expo-router";
+import { Tabs } from "expo-router";
 import { Alert } from "react-native";
 import { FreshguardTabBar, TabRoute } from "@/components/ui/freshguard-tab-bar";
-import { theme } from "@/src/theme";
 
 export default function TabLayout() {
-  const router = useRouter();
-
   return (
     <Tabs
       screenOptions={{

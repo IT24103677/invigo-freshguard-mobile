@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,9 +14,12 @@ import {
 } from "react-native";
 
 import { loginUser } from "@/src/api/auth";
+import { useAuthSession } from "@/src/context/auth-session";
 import { theme } from "@/src/theme";
+import freshguardLogo from "@/assets/images/freshguard-logo.png";
 
 export default function LoginScreen() {
+  const { setIsAuthenticated } = useAuthSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -36,6 +40,7 @@ export default function LoginScreen() {
         password,
       });
 
+      setIsAuthenticated(true);
       router.replace("/(tabs)");
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
@@ -55,6 +60,11 @@ export default function LoginScreen() {
       style={styles.container}
     >
       <View style={styles.card}>
+        <Image
+          source={freshguardLogo}
+          style={styles.logo}
+          resizeMode="cover"
+        />
         <Text style={styles.eyebrow}>Active Operations</Text>
         <Text style={styles.brand}>Invigo FreshGuard</Text>
         <Text style={styles.title}>Sales Staff Login</Text>
@@ -123,6 +133,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.outline,
     ...theme.shadows.floating,
+  },
+  logo: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    marginBottom: 4,
   },
   eyebrow: {
     ...theme.typography.labelCaps,

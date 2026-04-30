@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import { saveAuthToken } from "../storage/token";
+import { deleteAuthToken, saveAuthToken } from "../storage/token";
 import { ApiResponse, AuthPayload, AuthUser } from "../types/auth";
 
 interface LoginRequest {
@@ -22,4 +22,8 @@ export const loginUser = async ({ email, password }: LoginRequest) => {
 export const getCurrentUser = async () => {
   const response = await apiClient.get<ApiResponse<{ user: AuthUser }>>("/auth/me");
   return response.data.data.user;
+};
+
+export const logoutUser = async () => {
+  await deleteAuthToken();
 };

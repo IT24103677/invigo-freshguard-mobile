@@ -19,7 +19,10 @@ const createProduct = async (req, res) => {
       stripUnknown: true,
     });
 
-    const product = await productService.createProduct(payload);
+    const product = await productService.createProduct({
+      ...payload,
+      createdBy: req.user?._id ?? null,
+    });
 
     return res.status(201).json({
       success: true,
