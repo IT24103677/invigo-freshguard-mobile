@@ -96,17 +96,14 @@ function getCartStockIssues(
 export default function CheckoutScreen() {
   const {
     cart,
+    checkoutDraft,
     updateQuantity,
     updateDiscount,
     removeProduct,
+    setCheckoutDraft,
+    resetCheckoutDraft,
     clearCart,
   } = usePosCart();
-  const [amountGiven, setAmountGiven] = useState("");
-  const [customerName, setCustomerName] = useState("");
-  const [customerEmail, setCustomerEmail] = useState("");
-  const [notes, setNotes] = useState("");
-  const [receiptAsset, setReceiptAsset] =
-    useState<ImagePicker.ImagePickerAsset | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [stockRefreshing, setStockRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -115,6 +112,8 @@ export default function CheckoutScreen() {
   );
   const [hasStockSnapshot, setHasStockSnapshot] = useState(false);
   const [latestProducts, setLatestProducts] = useState<Record<string, Product>>({});
+  const { amountGiven, customerName, customerEmail, notes, receiptAsset } =
+    checkoutDraft;
 
   const cartSubTotal = useMemo(
     () => cart.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
@@ -196,11 +195,7 @@ export default function CheckoutScreen() {
 
   const resetCheckoutState = () => {
     clearCart();
-    setAmountGiven("");
-    setCustomerName("");
-    setCustomerEmail("");
-    setNotes("");
-    setReceiptAsset(null);
+    resetCheckoutDraft();
     setClientRequestKey(generateClientRequestKey());
     setErrorMsg("");
   };
@@ -281,7 +276,7 @@ export default function CheckoutScreen() {
           });
 
           if (!result.canceled) {
-            setReceiptAsset(result.assets[0]);
+            setCheckoutDraft({ receiptAsset: result.assets[0] });
           }
         },
       },
@@ -305,7 +300,7 @@ export default function CheckoutScreen() {
           });
 
           if (!result.canceled) {
-            setReceiptAsset(result.assets[0]);
+            setCheckoutDraft({ receiptAsset: result.assets[0] });
           }
         },
       },
@@ -624,7 +619,9 @@ export default function CheckoutScreen() {
                     placeholder="Customer name (optional)"
                     placeholderTextColor={colors.outline}
                     value={customerName}
-                    onChangeText={setCustomerName}
+                    onChangeText={(value) =>
+                      setCheckoutDraft({ customerName: value })
+                    }
                   />
                 </View>
                 <Text style={styles.fieldHintText}>
@@ -647,7 +644,9 @@ export default function CheckoutScreen() {
                     autoCapitalize="none"
                     keyboardType="email-address"
                     value={customerEmail}
-                    onChangeText={setCustomerEmail}
+                    onChangeText={(value) =>
+                      setCheckoutDraft({ customerEmail: value })
+                    }
                   />
                 </View>
                 <Text
@@ -678,7 +677,9 @@ export default function CheckoutScreen() {
                     placeholderTextColor={colors.outline}
                     keyboardType="decimal-pad"
                     value={amountGiven}
-                    onChangeText={setAmountGiven}
+                    onChangeText={(value) =>
+                      setCheckoutDraft({ amountGiven: value })
+                    }
                   />
                 </View>
                 <Text
@@ -711,7 +712,7 @@ export default function CheckoutScreen() {
                     placeholder="Notes (optional)"
                     placeholderTextColor={colors.outline}
                     value={notes}
-                    onChangeText={setNotes}
+                    onChangeText={(value) => setCheckoutDraft({ notes: value })}
                   />
                 </View>
               </View>
@@ -737,7 +738,7 @@ export default function CheckoutScreen() {
                   </Pressable>
                   {receiptAsset ? (
                     <Pressable
-                      onPress={() => setReceiptAsset(null)}
+                      onPress={() => setCheckoutDraft({ receiptAsset: null })}
                       style={styles.removeReceiptBtn}
                     >
                       <Text style={styles.removeReceiptBtnText}>Remove</Text>

@@ -1,16 +1,28 @@
 import React, { createContext, useContext, useState } from "react";
+import type { ImagePickerAsset } from "expo-image-picker";
 
 import { Product } from "../types/product";
 import { CartLineItem } from "@/components/ui/cart-item";
 
+interface CheckoutDraft {
+  amountGiven: string;
+  customerName: string;
+  customerEmail: string;
+  notes: string;
+  receiptAsset: ImagePickerAsset | null;
+}
+
 interface PosCartContextValue {
   cart: CartLineItem[];
+  checkoutDraft: CheckoutDraft;
   addProduct: (product: Product) => void;
   incrementProduct: (product: Product) => void;
   decrementProduct: (productId: string) => void;
   updateQuantity: (productId: string, delta: number) => void;
   updateDiscount: (productId: string, rate: number) => void;
   removeProduct: (productId: string) => void;
+  setCheckoutDraft: (draft: Partial<CheckoutDraft>) => void;
+  resetCheckoutDraft: () => void;
   clearCart: () => void;
 }
 
@@ -28,8 +40,21 @@ function buildCartItem(product: Product): CartLineItem {
   };
 }
 
+function buildCheckoutDraft(): CheckoutDraft {
+  return {
+    amountGiven: "",
+    customerName: "",
+    customerEmail: "",
+    notes: "",
+    receiptAsset: null,
+  };
+}
+
 export function PosCartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartLineItem[]>([]);
+  const [checkoutDraft, setCheckoutDraftState] = useState<CheckoutDraft>(
+    buildCheckoutDraft()
+  );
 
   const addProduct = (product: Product) => {
     setCart((prev) => {
@@ -91,18 +116,29 @@ export function PosCartProvider({ children }: { children: React.ReactNode }) {
     setCart((prev) => prev.filter((item) => item.productId !== productId));
   };
 
+  const setCheckoutDraft = (draft: Partial<CheckoutDraft>) => {
+    setCheckoutDraftState((current) => ({ ...current, ...draft }));
+  };
+
+  const resetCheckoutDraft = () => {
+    setCheckoutDraftState(buildCheckoutDraft());
+  };
+
   const clearCart = () => {
     setCart([]);
   };
 
   const value = {
     cart,
+    checkoutDraft,
     addProduct,
     incrementProduct,
     decrementProduct,
     updateQuantity,
     updateDiscount,
     removeProduct,
+    setCheckoutDraft,
+    resetCheckoutDraft,
     clearCart,
   };
 
