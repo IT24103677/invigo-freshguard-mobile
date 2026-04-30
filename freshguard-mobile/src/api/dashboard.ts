@@ -9,9 +9,17 @@ export interface DashboardSummary {
   latestActiveSale: Sale | null;
 }
 
-export const getDashboardSummary = async (): Promise<DashboardSummary> => {
+interface DashboardSummaryParams {
+  from?: string;
+  to?: string;
+}
+
+export const getDashboardSummary = async (
+  params?: DashboardSummaryParams
+): Promise<DashboardSummary> => {
   const response = await apiClient.get<ApiResponse<DashboardSummary>>(
-    "/dashboard/summary"
+    "/dashboard/summary",
+    { params }
   );
   return response.data.data;
 };

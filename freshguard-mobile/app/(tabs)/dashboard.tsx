@@ -23,6 +23,47 @@ function formatMoney(amount: number) {
   return `Rs. ${amount.toFixed(2)}`;
 }
 
+type DashboardRange = "TODAY" | "THIS_WEEK" | "THIS_MONTH";
+
+function getDashboardRangeParams(range: DashboardRange): {
+  from?: string;
+  to?: string;
+} {
+  const now = new Date();
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+
+  if (range === "THIS_WEEK") {
+    const day = start.getDay();
+    const diff = day === 0 ? 6 : day - 1;
+    start.setDate(start.getDate() - diff);
+  }
+
+  if (range === "THIS_MONTH") {
+    start.setDate(1);
+  }
+
+  return {
+    from: start.toISOString(),
+    to: end.toISOString(),
+  };
+}
+
+function getRangeLabel(range: DashboardRange) {
+  if (range === "THIS_WEEK") {
+    return "This Week";
+  }
+
+  if (range === "THIS_MONTH") {
+    return "This Month";
+  }
+
+  return "Today";
+}
+
 export default function DashboardScreen() {
   const { setIsAuthenticated } = useAuthSession();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -37,6 +78,7 @@ export default function DashboardScreen() {
   const [latestSaleGroupId, setLatestSaleGroupId] = useState("");
   const [latestSaleAmount, setLatestSaleAmount] = useState(0);
   const [latestSaleTime, setLatestSaleTime] = useState("");
+  const [selectedRange, setSelectedRange] = useState<DashboardRange>("TODAY");
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -45,7 +87,7 @@ export default function DashboardScreen() {
 
       const [user, summary] = await Promise.all([
         getCurrentUser(),
-        getDashboardSummary(),
+        getDashboardSummary(getDashboardRangeParams(selectedRange)),
       ]);
 
       setCurrentUser(user);
@@ -63,7 +105,7 @@ export default function DashboardScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedRange]);
 
   useFocusEffect(
     useCallback(() => {
@@ -135,7 +177,9 @@ export default function DashboardScreen() {
         >
           <View style={styles.heroCard}>
             <View style={styles.heroLeft}>
-              <Text style={styles.eyebrow}>Live Sales Summary</Text>
+              <Text style={styles.eyebrow}>
+                {getRangeLabel(selectedRange)} Sales Summary
+              </Text>
               <Text style={styles.title}>Dashboard</Text>
               <Text style={styles.subtitle}>
                 Operational totals are driven by ACTIVE sales only, while VOID
@@ -160,23 +204,72 @@ export default function DashboardScreen() {
             </View>
           ) : (
             <>
+              <View style={styles.rangeHeader}>
+                <Text style={styles.rangeHeaderLabel}>Summary Range</Text>
+                <Text style={styles.rangeHeaderValue}>
+                  {getRangeLabel(selectedRange)}
+                </Text>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.rangeRow}
+              >
+                {(
+                  [
+                    ["TODAY", "Today"],
+                    ["THIS_WEEK", "This Week"],
+                    ["THIS_MONTH", "This Month"],
+                  ] as [DashboardRange, string][]
+                ).map(([range, label]) => {
+                  const isSelected = selectedRange === range;
+
+                  return (
+                    <Pressable
+                      key={range}
+                      onPress={() => setSelectedRange(range)}
+                      style={[
+                        styles.rangeChip,
+                        isSelected && styles.rangeChipSelected,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.rangeChipText,
+                          isSelected && styles.rangeChipTextSelected,
+                        ]}
+                      >
+                        {label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
               <View style={styles.metricsGrid}>
                 <View style={[styles.metricCard, styles.metricCardPrimary]}>
-                  <Text style={styles.metricLabel}>Today&apos;s Revenue</Text>
+                  <Text style={styles.metricLabel}>
+                    {getRangeLabel(selectedRange)} Revenue
+                  </Text>
                   <Text style={styles.metricValue}>
                     {formatMoney(todaysRevenue)}
                   </Text>
                 </View>
 
                 <View style={styles.metricCard}>
-                  <Text style={styles.metricLabel}>Bills Today</Text>
+                  <Text style={styles.metricLabel}>
+                    {getRangeLabel(selectedRange)} Bills
+                  </Text>
                   <Text style={styles.metricValueNumber}>
                     {todaysActiveBills}
                   </Text>
                 </View>
 
                 <View style={styles.metricCard}>
-                  <Text style={styles.metricLabel}>Units Sold Today</Text>
+                  <Text style={styles.metricLabel}>
+                    {getRangeLabel(selectedRange)} Units Sold
+                  </Text>
                   <Text style={styles.metricValueNumber}>
                     {todaysUnitsSold}
                   </Text>
@@ -352,6 +445,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: colors.textMuted,
+  },
+  rangeHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  rangeHeaderLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    color: colors.primary,
+  },
+  rangeHeaderValue: {
+    fontSize: 12,
+    color: colors.textMuted,
+    fontWeight: "600",
+  },
+  rangeRow: {
+    gap: 10,
+    paddingBottom: 4,
+  },
+  rangeChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: colors.primaryContainer + "40",
+    borderWidth: 1,
+    borderColor: colors.primaryContainer,
+  },
+  rangeChipSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  rangeChipText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  rangeChipTextSelected: {
+    color: colors.white,
   },
   errorCard: {
     backgroundColor: colors.errorContainer,
