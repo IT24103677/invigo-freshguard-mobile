@@ -8,11 +8,14 @@ const {
 const saleService = require("../services/saleService");
 
 const sendError = (res, error) => {
-  const statusCode = error.statusCode || 500;
+  const statusCode = error.statusCode || (error.isJoi ? 400 : 500);
+  const message = error.isJoi
+    ? error.details?.map((detail) => detail.message).join(". ") || error.message
+    : error.message || "Something went wrong.";
 
   return res.status(statusCode).json({
     success: false,
-    message: error.message || "Something went wrong.",
+    message,
   });
 };
 

@@ -155,14 +155,19 @@ export default function CheckoutScreen() {
       return;
     }
 
+    if (!amountGiven.trim()) {
+      setErrorMsg("Amount given is required before recording the sale.");
+      return;
+    }
+
     const parsedAmount = parseFloat(amountGiven);
 
-    if (amountGiven.trim() && (Number.isNaN(parsedAmount) || parsedAmount < 0)) {
+    if (Number.isNaN(parsedAmount) || parsedAmount < 0) {
       setErrorMsg("Amount given must be a valid number.");
       return;
     }
 
-    if (amountGiven.trim() && parsedAmount < grandTotal) {
+    if (parsedAmount < grandTotal) {
       setErrorMsg("Amount given cannot be less than the grand total.");
       return;
     }
@@ -176,7 +181,7 @@ export default function CheckoutScreen() {
         customerName: customerName.trim() || undefined,
         customerEmail: customerEmail.trim() || undefined,
         notes: notes.trim() || undefined,
-        amountGiven: amountGiven.trim() ? parsedAmount : undefined,
+        amountGiven: parsedAmount,
         items: cart.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -400,7 +405,7 @@ export default function CheckoutScreen() {
                   />
                   <TextInput
                     style={styles.input}
-                    placeholder="Amount given"
+                    placeholder="Amount given *"
                     placeholderTextColor={colors.outline}
                     keyboardType="decimal-pad"
                     value={amountGiven}

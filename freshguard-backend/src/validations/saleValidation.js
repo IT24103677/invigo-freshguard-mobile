@@ -14,7 +14,7 @@ const createSaleSchema = Joi.object({
   notes: Joi.string().allow("", null).optional(),
   customerName: Joi.string().allow("", null).optional(),
   customerEmail: Joi.string().email().allow("", null).optional(),
-  amountGiven: Joi.number().min(0).allow(null).optional(),
+  amountGiven: Joi.number().min(0).required(),
   items: Joi.array().items(saleItemSchema).min(1).required(),
 });
 

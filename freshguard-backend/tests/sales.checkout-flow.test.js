@@ -105,6 +105,31 @@ describe("Sales checkout flow", () => {
     expect(unchangedBatch.quantityOnHand).toBe(10);
   });
 
+  it("requires amount given before recording a sale", async () => {
+    const { token } = await createManager();
+    const { product, batch } = await createProductWithBatch(10);
+
+    const response = await request(app)
+      .post("/sales")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        items: [
+          {
+            productId: product._id.toString(),
+            quantity: 1,
+            discountRateApplied: 0,
+          },
+        ],
+      })
+      .expect(400);
+
+    const unchangedBatch = await Batch.findById(batch._id);
+
+    expect(response.body.success).toBe(false);
+    expect(response.body.message).toContain("\"amountGiven\" is required");
+    expect(unchangedBatch.quantityOnHand).toBe(10);
+  });
+
   it("voids a sale and restores stock to the original batch", async () => {
     const { token } = await createManager();
     const { product, batch } = await createProductWithBatch(10);
