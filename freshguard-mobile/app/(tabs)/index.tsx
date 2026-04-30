@@ -91,6 +91,27 @@ function getExpiryStatus(
   return { variant: "stable", label: `Stable ${formatNearestExpiry(product.nearestExpiryDate)}` };
 }
 
+function matchesProductSearch(product: Product, rawSearch: string) {
+  const query = rawSearch.trim().toLowerCase();
+
+  if (!query) {
+    return true;
+  }
+
+  const searchableFields = [
+    product.name,
+    product.category,
+    product.sku,
+    product.barcode,
+    product.brand,
+    product.supplier,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase());
+
+  return searchableFields.some((field) => field.includes(query));
+}
+
 export default function PosScreen() {
   const { setIsAuthenticated } = useAuthSession();
   const { cart, addProduct, incrementProduct, decrementProduct } = usePosCart();
@@ -101,6 +122,7 @@ export default function PosScreen() {
   const [activeFilter, setActiveFilter] = useState("ALL");
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const hasActiveSearch = search.trim().length > 0;
 
   const loadProducts = useCallback(async (isRefresh = false) => {
     try {
@@ -133,9 +155,7 @@ export default function PosScreen() {
   const filtered = useMemo(
     () =>
       products.filter((product) => {
-        const matchSearch =
-          search.trim() === "" ||
-          product.name.toLowerCase().includes(search.toLowerCase());
+        const matchSearch = matchesProductSearch(product, search);
         const matchFilter =
           activeFilter === "ALL" ||
           product.category.toUpperCase() === activeFilter;
@@ -149,6 +169,7 @@ export default function PosScreen() {
   const criticalCount = products.filter(
     (product) => getStockStatus(product) === "critical"
   ).length;
+  const filteredCount = filtered.length;
   const cartSubTotal = cart.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
     0
@@ -233,11 +254,37 @@ export default function PosScreen() {
           />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search stock inventory..."
+            placeholder="Search by name, SKU, or barcode..."
             placeholderTextColor={colors.textMuted}
             value={search}
             onChangeText={setSearch}
+            autoCapitalize="none"
+            autoCorrect={false}
           />
+          {hasActiveSearch ? (
+            <Pressable
+              onPress={() => setSearch("")}
+              hitSlop={8}
+              style={styles.clearSearchButton}
+            >
+              <MaterialCommunityIcons
+                name="close-circle"
+                size={18}
+                color={colors.textMuted}
+              />
+            </Pressable>
+          ) : null}
+        </View>
+
+        <View style={styles.searchMetaRow}>
+          <Text style={styles.searchHelperText}>
+            Search by product name, SKU, barcode, brand, or supplier
+          </Text>
+          {!loading ? (
+            <Text style={styles.searchCountText}>
+              {filteredCount} {filteredCount === 1 ? "result" : "results"}
+            </Text>
+          ) : null}
         </View>
 
         <ScrollView
@@ -316,11 +363,32 @@ export default function PosScreen() {
         ) : filtered.length === 0 ? (
           <View style={styles.empty}>
             <MaterialCommunityIcons
-              name="package-variant"
+              name="package-variant-closed-remove"
               size={48}
               color={colors.outline}
             />
-            <Text style={styles.emptyText}>No products found.</Text>
+            <Text style={styles.emptyText}>No products matched your search.</Text>
+            <Text style={styles.emptySubtext}>
+              Try a product name, SKU, barcode, or switch the category filter.
+            </Text>
+            <View style={styles.emptyActions}>
+              {hasActiveSearch ? (
+                <Pressable
+                  onPress={() => setSearch("")}
+                  style={styles.emptyActionButton}
+                >
+                  <Text style={styles.emptyActionLabel}>Clear Search</Text>
+                </Pressable>
+              ) : null}
+              {activeFilter !== "ALL" ? (
+                <Pressable
+                  onPress={() => setActiveFilter("ALL")}
+                  style={styles.emptyActionButton}
+                >
+                  <Text style={styles.emptyActionLabel}>Show All Categories</Text>
+                </Pressable>
+              ) : null}
+            </View>
           </View>
         ) : (
           filtered.map((product) => {
@@ -363,6 +431,32 @@ export default function PosScreen() {
                     <Text style={styles.productCategory}>
                       Category: {product.category}
                     </Text>
+                    <View style={styles.productMetaTags}>
+                      {product.sku ? (
+                        <View style={styles.productMetaTag}>
+                          <MaterialCommunityIcons
+                            name="tag-outline"
+                            size={12}
+                            color={colors.primary}
+                          />
+                          <Text style={styles.productMetaTagText}>
+                            SKU {product.sku}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {product.barcode ? (
+                        <View style={styles.productMetaTag}>
+                          <MaterialCommunityIcons
+                            name="barcode"
+                            size={12}
+                            color={colors.primary}
+                          />
+                          <Text style={styles.productMetaTagText}>
+                            Barcode {product.barcode}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
                     <View style={styles.inventoryMetaRow}>
                       <Text style={styles.inventoryMetaText}>
                         {(product.sellableUnits ?? 0).toLocaleString()} units sellable
@@ -510,6 +604,29 @@ const styles = StyleSheet.create({
   },
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, fontSize: 15, color: colors.text },
+  clearSearchButton: {
+    marginLeft: 8,
+    paddingVertical: 2,
+  },
+  searchMetaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    marginTop: -2,
+    marginBottom: 4,
+  },
+  searchHelperText: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.textMuted,
+    lineHeight: 18,
+  },
+  searchCountText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.primary,
+  },
   chips: { gap: 8, paddingVertical: 4 },
   chip: {
     paddingHorizontal: 14,
@@ -553,7 +670,38 @@ const styles = StyleSheet.create({
     color: colors.terracotta,
   },
   empty: { alignItems: "center", paddingTop: 48, gap: 12 },
-  emptyText: { fontSize: 15, color: colors.textMuted },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.text,
+    textAlign: "center",
+  },
+  emptySubtext: {
+    fontSize: 13,
+    color: colors.textMuted,
+    textAlign: "center",
+    lineHeight: 20,
+    maxWidth: 280,
+  },
+  emptyActions: {
+    flexDirection: "row",
+    gap: 10,
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  emptyActionButton: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  emptyActionLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.primary,
+  },
   productCard: {
     flexDirection: "row",
     backgroundColor: colors.surface,
@@ -586,6 +734,26 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     color: colors.outline,
     textTransform: "uppercase",
+  },
+  productMetaTags: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 2,
+  },
+  productMetaTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.primaryContainer + "50",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  productMetaTagText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.primary,
   },
   inventoryMetaRow: {
     flexDirection: "row",
