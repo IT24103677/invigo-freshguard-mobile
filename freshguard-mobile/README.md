@@ -16,6 +16,26 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+## API configuration
+
+The mobile app reads its backend URLs from `app.json`:
+
+```json
+"extra": {
+  "apiBaseUrlWeb": "http://localhost:5000",
+  "apiBaseUrlNative": "http://10.164.210.177:5000"
+}
+```
+
+- `apiBaseUrlWeb` is used for Expo web in the browser.
+- `apiBaseUrlNative` is used for Expo Go / phone testing.
+
+If your laptop IP changes on Wi-Fi, update `apiBaseUrlNative`, then restart Expo:
+
+```bash
+npx expo start --clear
+```
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)

@@ -44,6 +44,10 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "apiBaseUrlWeb": "http://localhost:5000",
+      "apiBaseUrlNative": "http://10.164.210.177:5000"
     }
   }
 }

@@ -15,6 +15,13 @@ interface CreateSaleInput {
   items: CreateSaleItemInput[];
 }
 
+interface UpdateSaleInput {
+  notes?: string;
+  customerName?: string;
+  customerEmail?: string;
+  editReason: string;
+}
+
 export const getSales = async () => {
   const response = await apiClient.get<ApiResponse<Sale[]>>("/sales");
   return response.data.data;
@@ -27,6 +34,11 @@ export const getSaleById = async (saleId: string) => {
 
 export const createSale = async (payload: CreateSaleInput) => {
   const response = await apiClient.post<ApiResponse<Sale>>("/sales", payload);
+  return response.data.data;
+};
+
+export const updateSale = async (saleId: string, payload: UpdateSaleInput) => {
+  const response = await apiClient.put<ApiResponse<Sale>>(`/sales/${saleId}`, payload);
   return response.data.data;
 };
 

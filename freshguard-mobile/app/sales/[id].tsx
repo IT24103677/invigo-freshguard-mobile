@@ -13,14 +13,12 @@ import { useLocalSearchParams, router } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { getCurrentUser } from "@/src/api/auth";
-import { getSaleById, voidSale } from "@/src/api/sales";
+import { getSaleById, updateSale, voidSale } from "@/src/api/sales";
 import { colors, saleStatusColors } from "@/src/theme/colors";
 import { theme } from "@/src/theme";
 import { AuthUser } from "@/src/types/auth";
 import { Sale, SaleItem } from "@/src/types/sale";
 import { ProductImage } from "@/components/ui/product-image";
-
-// ── helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-US", {
@@ -40,10 +38,10 @@ function formatDateTime(dateStr: string) {
   });
 }
 
-// ── sub-components ────────────────────────────────────────────────────────────
-
 function SaleItemCard({ item }: { item: SaleItem }) {
-  const discountAmt = item.quantity * item.unitPriceSnapshot * (item.discountRateApplied / 100);
+  const discountAmount =
+    item.quantity * item.unitPriceSnapshot * (item.discountRateApplied / 100);
+
   return (
     <View style={styles.itemCard}>
       <View style={styles.itemHeader}>
@@ -57,29 +55,37 @@ function SaleItemCard({ item }: { item: SaleItem }) {
         <View style={styles.itemMeta}>
           <Text style={styles.itemName}>{item.productNameSnapshot}</Text>
           <Text style={styles.itemSub}>
-            {item.quantity} × Rs. {item.unitPriceSnapshot.toFixed(2)}
+            {item.quantity} x Rs. {item.unitPriceSnapshot.toFixed(2)}
           </Text>
           {item.discountRateApplied > 0 && (
             <Text style={styles.itemDiscount}>
-              Discount {item.discountRateApplied}% (−Rs. {discountAmt.toFixed(2)})
+              Discount {item.discountRateApplied}% (-Rs.{" "}
+              {discountAmount.toFixed(2)})
             </Text>
           )}
         </View>
         <Text style={styles.itemTotal}>Rs. {item.lineTotal.toFixed(2)}</Text>
       </View>
 
-      {/* Batch allocations */}
       {item.allocations.length > 0 && (
         <View style={styles.allocations}>
           <Text style={styles.allocLabel}>BATCH ALLOCATIONS</Text>
-          {item.allocations.map((a, idx) => (
-            <View key={`${a.batchId}-${idx}`} style={styles.allocRow}>
-              <MaterialCommunityIcons name="cube-outline" size={14} color={colors.primary} />
+          {item.allocations.map((allocation, index) => (
+            <View
+              key={`${allocation.batchId}-${index}`}
+              style={styles.allocRow}
+            >
+              <MaterialCommunityIcons
+                name="cube-outline"
+                size={14}
+                color={colors.primary}
+              />
               <Text style={styles.allocText}>
-                {String(a.batchId).slice(-8).toUpperCase()} — {a.qtyDeducted} units
+                {String(allocation.batchId).slice(-8).toUpperCase()} -{" "}
+                {allocation.qtyDeducted} units
               </Text>
               <Text style={styles.allocExpiry}>
-                Exp: {formatDate(a.expiryDateSnapshot)}
+                Exp: {formatDate(allocation.expiryDateSnapshot)}
               </Text>
             </View>
           ))}
@@ -89,21 +95,33 @@ function SaleItemCard({ item }: { item: SaleItem }) {
   );
 }
 
-// ── main screen ───────────────────────────────────────────────────────────────
-
 export default function SaleDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [sale, setSale] = useState<Sale | null>(null);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+
+  const [showEditPanel, setShowEditPanel] = useState(false);
+  const [customerNameInput, setCustomerNameInput] = useState("");
+  const [customerEmailInput, setCustomerEmailInput] = useState("");
+  const [notesInput, setNotesInput] = useState("");
+  const [editReasonInput, setEditReasonInput] = useState("");
+  const [editMsg, setEditMsg] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
   const [voidReason, setVoidReason] = useState("");
   const [voidMsg, setVoidMsg] = useState("");
   const [isVoiding, setIsVoiding] = useState(false);
   const [showVoidPanel, setShowVoidPanel] = useState(false);
 
   const loadSale = useCallback(async () => {
-    if (!id) { setErrorMessage("Sale ID is missing."); setLoading(false); return; }
+    if (!id) {
+      setErrorMessage("Sale ID is missing.");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setErrorMessage("");
@@ -111,8 +129,12 @@ export default function SaleDetailsScreen() {
         getSaleById(id),
         getCurrentUser(),
       ]);
+
       setSale(saleResult);
       setCurrentUser(userResult);
+      setCustomerNameInput(saleResult.customerName ?? "");
+      setCustomerEmailInput(saleResult.customerEmail ?? "");
+      setNotesInput(saleResult.notes ?? "");
     } catch {
       setErrorMessage("Failed to load sale details.");
     } finally {
@@ -120,15 +142,62 @@ export default function SaleDetailsScreen() {
     }
   }, [id]);
 
-  useEffect(() => { loadSale(); }, [loadSale]);
+  useEffect(() => {
+    loadSale();
+  }, [loadSale]);
 
+  const canEdit = sale?.status === "ACTIVE";
   const canVoid =
     sale?.status === "ACTIVE" &&
     (currentUser?.role === "ADMIN" || currentUser?.role === "MANAGER");
 
+  const resetEditPanel = () => {
+    setShowEditPanel(false);
+    setEditReasonInput("");
+    setEditMsg("");
+    setCustomerNameInput(sale?.customerName ?? "");
+    setCustomerEmailInput(sale?.customerEmail ?? "");
+    setNotesInput(sale?.notes ?? "");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!sale?._id) return;
+
+    if (!editReasonInput.trim()) {
+      setEditMsg("Edit reason is required.");
+      return;
+    }
+
+    try {
+      setIsSavingEdit(true);
+      setEditMsg("");
+      await updateSale(sale._id, {
+        customerName: customerNameInput.trim() || undefined,
+        customerEmail: customerEmailInput.trim() || undefined,
+        notes: notesInput.trim() || undefined,
+        editReason: editReasonInput.trim(),
+      });
+      setEditMsg("Sale updated successfully.");
+      setShowEditPanel(false);
+      setEditReasonInput("");
+      await loadSale();
+    } catch (err: any) {
+      setEditMsg(
+        err?.response?.data?.message ?? err?.message ?? "Failed to update sale."
+      );
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   const handleVoid = async () => {
     if (!sale?._id) return;
-    if (!voidReason.trim()) { setVoidMsg("Void reason is required."); return; }
+
+    if (!voidReason.trim()) {
+      setVoidMsg("Void reason is required.");
+      return;
+    }
+
     try {
       setIsVoiding(true);
       setVoidMsg("");
@@ -138,7 +207,9 @@ export default function SaleDetailsScreen() {
       setShowVoidPanel(false);
       await loadSale();
     } catch (err: any) {
-      setVoidMsg(err?.response?.data?.message ?? err?.message ?? "Failed to void sale.");
+      setVoidMsg(
+        err?.response?.data?.message ?? err?.message ?? "Failed to void sale."
+      );
     } finally {
       setIsVoiding(false);
     }
@@ -149,7 +220,7 @@ export default function SaleDetailsScreen() {
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.helperText}>Loading sale details…</Text>
+          <Text style={styles.helperText}>Loading sale details...</Text>
         </View>
       </SafeAreaView>
     );
@@ -159,8 +230,14 @@ export default function SaleDetailsScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <View style={styles.centered}>
-          <MaterialCommunityIcons name="alert-circle-outline" size={48} color={colors.terracotta} />
-          <Text style={styles.errorText}>{errorMessage || "Sale unavailable."}</Text>
+          <MaterialCommunityIcons
+            name="alert-circle-outline"
+            size={48}
+            color={colors.terracotta}
+          />
+          <Text style={styles.errorText}>
+            {errorMessage || "Sale unavailable."}
+          </Text>
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
             <Text style={styles.backBtnText}>Go Back</Text>
           </Pressable>
@@ -171,16 +248,31 @@ export default function SaleDetailsScreen() {
 
   const statusColors = saleStatusColors[sale.status];
   const isVoid = sale.status === "VOID";
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      {/* ── Top app bar ── */}
       <View style={styles.appBar}>
-        <Pressable onPress={() => router.back()} style={styles.backIcon} hitSlop={8}>
-          <MaterialCommunityIcons name="arrow-left" size={22} color={colors.primary} />
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.backIcon}
+          hitSlop={8}
+        >
+          <MaterialCommunityIcons
+            name="arrow-left"
+            size={22}
+            color={colors.primary}
+          />
         </Pressable>
         <Text style={styles.appBarTitle}>Sale Details</Text>
-        <View style={[styles.statusPill, { backgroundColor: statusColors.background }]}>
-          <Text style={[styles.statusPillText, { color: statusColors.text }]}>
+        <View
+          style={[
+            styles.statusPill,
+            { backgroundColor: statusColors.background },
+          ]}
+        >
+          <Text
+            style={[styles.statusPillText, { color: statusColors.text }]}
+          >
             {sale.status}
           </Text>
         </View>
@@ -190,14 +282,14 @@ export default function SaleDetailsScreen() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Hero: first item image ── */}
         <View style={styles.heroWrap}>
-
           <View style={styles.heroBanner}>
             <View style={styles.heroTextBlock}>
               <Text style={styles.heroEyebrow}>SALES RECEIPT</Text>
               <Text style={styles.heroTitle}>{sale.saleGroupId}</Text>
-              <Text style={styles.heroDate}>{formatDateTime(sale.saleDateTime)}</Text>
+              <Text style={styles.heroDate}>
+                {formatDateTime(sale.saleDateTime)}
+              </Text>
             </View>
             <View style={styles.heroMeta}>
               <View style={styles.scoreCircle}>
@@ -208,40 +300,73 @@ export default function SaleDetailsScreen() {
           </View>
         </View>
 
-        {/* ── Financial summary bento ── */}
         <View style={styles.financialBento}>
           <View style={styles.financialRow}>
             <View style={styles.financialCard}>
               <Text style={styles.financialLabel}>SUBTOTAL</Text>
-              <Text style={styles.financialValue}>Rs. {sale.subTotal.toFixed(2)}</Text>
+              <Text style={styles.financialValue}>
+                Rs. {sale.subTotal.toFixed(2)}
+              </Text>
             </View>
-            <View style={[styles.financialCard, { backgroundColor: colors.secondaryContainer }]}>
-              <Text style={[styles.financialLabel, { color: colors.secondary }]}>DISCOUNT</Text>
-              <Text style={[styles.financialValue, { color: colors.secondary }]}>
-                −Rs. {sale.discountTotal.toFixed(2)}
+            <View
+              style={[
+                styles.financialCard,
+                { backgroundColor: colors.secondaryContainer },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.financialLabel,
+                  { color: colors.secondary },
+                ]}
+              >
+                DISCOUNT
+              </Text>
+              <Text
+                style={[
+                  styles.financialValue,
+                  { color: colors.secondary },
+                ]}
+              >
+                -Rs. {sale.discountTotal.toFixed(2)}
               </Text>
             </View>
           </View>
-          <View style={[styles.financialCardWide, { backgroundColor: colors.primaryContainer }]}>
-            <Text style={[styles.financialLabel, { color: colors.onPrimaryContainer }]}>
+          <View
+            style={[
+              styles.financialCardWide,
+              { backgroundColor: colors.primaryContainer },
+            ]}
+          >
+            <Text
+              style={[
+                styles.financialLabel,
+                { color: colors.onPrimaryContainer },
+              ]}
+            >
               GRAND TOTAL
             </Text>
-            <Text style={[styles.financialValueLg, { color: colors.primary }]}>
+            <Text
+              style={[styles.financialValueLg, { color: colors.primary }]}
+            >
               Rs. {sale.grandTotal.toFixed(2)}
             </Text>
             {sale.amountGiven != null && (
               <Text style={styles.changeText}>
-                Paid: Rs. {sale.amountGiven.toFixed(2)} · Change: Rs.{" "}
+                Paid: Rs. {sale.amountGiven.toFixed(2)} - Change: Rs.{" "}
                 {(sale.changeGiven ?? 0).toFixed(2)}
               </Text>
             )}
           </View>
         </View>
 
-        {/* ── Items section ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeading}>
-            <MaterialCommunityIcons name="package-variant" size={20} color={colors.primary} />
+            <MaterialCommunityIcons
+              name="package-variant"
+              size={20}
+              color={colors.primary}
+            />
             <Text style={styles.sectionTitle}>Items Sold</Text>
           </View>
           {sale.items.map((item, idx) => (
@@ -249,11 +374,14 @@ export default function SaleDetailsScreen() {
           ))}
         </View>
 
-        {/* ── Customer & notes ── */}
         {(sale.customerName || sale.customerEmail || sale.notes) && (
           <View style={styles.section}>
             <View style={styles.sectionHeading}>
-              <MaterialCommunityIcons name="account-outline" size={20} color={colors.primary} />
+              <MaterialCommunityIcons
+                name="account-outline"
+                size={20}
+                color={colors.primary}
+              />
               <Text style={styles.sectionTitle}>Customer Info</Text>
             </View>
             <View style={styles.infoCard}>
@@ -279,10 +407,127 @@ export default function SaleDetailsScreen() {
           </View>
         )}
 
-        {/* ── Audit trail ── */}
+        {canEdit && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeading}>
+              <MaterialCommunityIcons
+                name="pencil-outline"
+                size={20}
+                color={colors.primary}
+              />
+              <Text style={styles.sectionTitle}>Edit Sale</Text>
+            </View>
+
+            {!showEditPanel ? (
+              <Pressable
+                onPress={() => {
+                  setShowEditPanel(true);
+                  setEditMsg("");
+                }}
+                style={({ pressed }) => [
+                  styles.editButton,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="file-document-edit-outline"
+                  size={18}
+                  color={colors.primary}
+                />
+                <Text style={styles.editButtonText}>
+                  Edit Customer Info / Notes
+                </Text>
+              </Pressable>
+            ) : (
+              <View style={styles.editPanel}>
+                <Text style={styles.editPanelInfo}>
+                  Only metadata can be edited here. Product quantities,
+                  allocations, and totals remain unchanged.
+                </Text>
+
+                <TextInput
+                  value={customerNameInput}
+                  onChangeText={setCustomerNameInput}
+                  placeholder="Customer name"
+                  placeholderTextColor={colors.outline}
+                  style={styles.editInput}
+                />
+
+                <TextInput
+                  value={customerEmailInput}
+                  onChangeText={setCustomerEmailInput}
+                  placeholder="Customer email"
+                  placeholderTextColor={colors.outline}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={styles.editInput}
+                />
+
+                <TextInput
+                  value={notesInput}
+                  onChangeText={setNotesInput}
+                  placeholder="Notes"
+                  placeholderTextColor={colors.outline}
+                  multiline
+                  textAlignVertical="top"
+                  style={[styles.editInput, styles.editNotesInput]}
+                />
+
+                <TextInput
+                  value={editReasonInput}
+                  onChangeText={setEditReasonInput}
+                  placeholder="Edit reason"
+                  placeholderTextColor={colors.outline}
+                  style={styles.editInput}
+                />
+
+                {editMsg ? (
+                  <Text
+                    style={[
+                      styles.editMsg,
+                      editMsg.includes("successfully")
+                        ? { color: colors.success }
+                        : { color: colors.terracotta },
+                    ]}
+                  >
+                    {editMsg}
+                  </Text>
+                ) : null}
+
+                <View style={styles.editActions}>
+                  <Pressable onPress={resetEditPanel} style={styles.cancelBtn}>
+                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleSaveEdit}
+                    disabled={isSavingEdit}
+                    style={({ pressed }) => [
+                      styles.editConfirmBtn,
+                      pressed && { opacity: 0.85 },
+                      isSavingEdit && { opacity: 0.7 },
+                    ]}
+                  >
+                    {isSavingEdit ? (
+                      <ActivityIndicator color={colors.white} size="small" />
+                    ) : (
+                      <Text style={styles.editConfirmBtnText}>
+                        Save Changes
+                      </Text>
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
         <View style={styles.section}>
           <View style={styles.sectionHeading}>
-            <MaterialCommunityIcons name="shield-check-outline" size={20} color={colors.primary} />
+            <MaterialCommunityIcons
+              name="shield-check-outline"
+              size={20}
+              color={colors.primary}
+            />
             <Text style={styles.sectionTitle}>Audit Trail</Text>
           </View>
           <View style={styles.infoCard}>
@@ -294,14 +539,18 @@ export default function SaleDetailsScreen() {
               <>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoKey}>Voided By</Text>
-                  <Text style={[styles.infoVal, { color: colors.terracotta }]}>
+                  <Text
+                    style={[styles.infoVal, { color: colors.terracotta }]}
+                  >
                     {sale.voidedBy ?? "N/A"}
                   </Text>
                 </View>
                 {sale.voidedAt && (
                   <View style={styles.infoRow}>
                     <Text style={styles.infoKey}>Voided At</Text>
-                    <Text style={styles.infoVal}>{formatDateTime(sale.voidedAt)}</Text>
+                    <Text style={styles.infoVal}>
+                      {formatDateTime(sale.voidedAt)}
+                    </Text>
                   </View>
                 )}
                 {sale.voidReason && (
@@ -320,10 +569,18 @@ export default function SaleDetailsScreen() {
                   <Text style={styles.infoKey}>Edited By</Text>
                   <Text style={styles.infoVal}>{sale.editedBy}</Text>
                 </View>
+                {sale.editedAt && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoKey}>Edited At</Text>
+                    <Text style={styles.infoVal}>
+                      {formatDateTime(sale.editedAt)}
+                    </Text>
+                  </View>
+                )}
                 <View style={styles.infoRow}>
                   <Text style={styles.infoKey}>Edit Reason</Text>
                   <Text style={[styles.infoVal, { fontStyle: "italic" }]}>
-                    {sale.editReason ?? "—"}
+                    {sale.editReason ?? "-"}
                   </Text>
                 </View>
               </>
@@ -331,12 +588,17 @@ export default function SaleDetailsScreen() {
           </View>
         </View>
 
-        {/* ── Void Action (managers/admins only) ── */}
         {canVoid && (
           <View style={styles.section}>
             <View style={styles.sectionHeading}>
-              <MaterialCommunityIcons name="cancel" size={20} color={colors.terracotta} />
-              <Text style={[styles.sectionTitle, { color: colors.terracotta }]}>
+              <MaterialCommunityIcons
+                name="cancel"
+                size={20}
+                color={colors.terracotta}
+              />
+              <Text
+                style={[styles.sectionTitle, { color: colors.terracotta }]}
+              >
                 Manager Action
               </Text>
             </View>
@@ -349,19 +611,24 @@ export default function SaleDetailsScreen() {
                   pressed && { opacity: 0.85 },
                 ]}
               >
-                <MaterialCommunityIcons name="delete-forever-outline" size={18} color={colors.terracotta} />
+                <MaterialCommunityIcons
+                  name="delete-forever-outline"
+                  size={18}
+                  color={colors.terracotta}
+                />
                 <Text style={styles.showVoidBtnText}>Void This Sale</Text>
               </Pressable>
             ) : (
               <View style={styles.voidPanel}>
                 <Text style={styles.voidPanelInfo}>
-                  Voiding will restore all batch stock. This action cannot be undone.
+                  Voiding will restore all batch stock. This action cannot be
+                  undone.
                 </Text>
                 <TextInput
                   multiline
                   value={voidReason}
                   onChangeText={setVoidReason}
-                  placeholder="Enter the reason for voiding this sale…"
+                  placeholder="Enter the reason for voiding this sale..."
                   placeholderTextColor={colors.outline}
                   style={styles.voidInput}
                   textAlignVertical="top"
@@ -380,7 +647,11 @@ export default function SaleDetailsScreen() {
                 ) : null}
                 <View style={styles.voidActions}>
                   <Pressable
-                    onPress={() => { setShowVoidPanel(false); setVoidReason(""); setVoidMsg(""); }}
+                    onPress={() => {
+                      setShowVoidPanel(false);
+                      setVoidReason("");
+                      setVoidMsg("");
+                    }}
                     style={styles.cancelBtn}
                   >
                     <Text style={styles.cancelBtnText}>Cancel</Text>
@@ -397,7 +668,9 @@ export default function SaleDetailsScreen() {
                     {isVoiding ? (
                       <ActivityIndicator color={colors.white} size="small" />
                     ) : (
-                      <Text style={styles.voidConfirmBtnText}>Confirm Void</Text>
+                      <Text style={styles.voidConfirmBtnText}>
+                        Confirm Void
+                      </Text>
                     )}
                   </Pressable>
                 </View>
@@ -412,13 +685,22 @@ export default function SaleDetailsScreen() {
   );
 }
 
-// ── styles ────────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 16 },
+  centered: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+    gap: 16,
+  },
   helperText: { fontSize: 15, color: colors.textMuted, marginTop: 8 },
-  errorText: { fontSize: 16, fontWeight: "600", color: colors.terracotta, textAlign: "center" },
+  errorText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.terracotta,
+    textAlign: "center",
+  },
   backBtn: {
     marginTop: 8,
     backgroundColor: colors.primaryContainer,
@@ -426,7 +708,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
   },
-  backBtnText: { fontSize: 14, fontWeight: "700", color: colors.onPrimaryContainer },
+  backBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.onPrimaryContainer,
+  },
   appBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -445,13 +731,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  appBarTitle: { flex: 1, fontSize: 17, fontWeight: "700", color: colors.primary },
+  appBarTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: "700",
+    color: colors.primary,
+  },
   statusPill: {
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 20,
   },
-  statusPillText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase" },
+  statusPillText: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
   scroll: { padding: 20, gap: 4 },
   heroBanner: {
     flexDirection: "row",
@@ -485,8 +781,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  scoreNum: { fontSize: 20, fontWeight: "800", color: colors.primary, lineHeight: 22 },
-  scoreLabel: { fontSize: 9, fontWeight: "700", color: colors.primary + "99", textTransform: "uppercase" },
+  scoreNum: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: colors.primary,
+    lineHeight: 22,
+  },
+  scoreLabel: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: colors.primary + "99",
+    textTransform: "uppercase",
+  },
   financialBento: { gap: 10, marginTop: 4, marginBottom: 4 },
   financialRow: { flexDirection: "row", gap: 10 },
   financialCard: {
@@ -529,7 +835,11 @@ const styles = StyleSheet.create({
   itemMeta: { flex: 1, gap: 2 },
   itemName: { fontSize: 15, fontWeight: "700", color: colors.text },
   itemSub: { fontSize: 13, color: colors.textMuted },
-  itemDiscount: { fontSize: 12, color: colors.secondary, fontWeight: "600" },
+  itemDiscount: {
+    fontSize: 12,
+    color: colors.secondary,
+    fontWeight: "600",
+  },
   itemTotal: { fontSize: 15, fontWeight: "800", color: colors.primary },
   allocations: {
     backgroundColor: colors.surfaceLow,
@@ -565,8 +875,67 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 12,
   },
-  infoKey: { fontSize: 13, fontWeight: "700", color: colors.textMuted, flex: 1 },
+  infoKey: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.textMuted,
+    flex: 1,
+  },
   infoVal: { fontSize: 13, color: colors.text, flex: 2, textAlign: "right" },
+  editButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    backgroundColor: colors.primaryContainer + "55",
+  },
+  editButtonText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  editPanel: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.primaryContainer,
+    ...theme.shadows.card,
+  },
+  editPanelInfo: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
+  editInput: {
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: colors.surfaceLow,
+    fontSize: 14,
+    color: colors.text,
+  },
+  editNotesInput: {
+    minHeight: 80,
+  },
+  editMsg: { fontSize: 13, fontWeight: "600" },
+  editActions: { flexDirection: "row", gap: 10 },
+  editConfirmBtn: {
+    flex: 2,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  editConfirmBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.white,
+  },
   showVoidBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -578,7 +947,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     backgroundColor: "#fde9e4",
   },
-  showVoidBtnText: { fontSize: 15, fontWeight: "700", color: colors.terracotta },
+  showVoidBtnText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.terracotta,
+  },
   voidPanel: {
     backgroundColor: colors.surface,
     borderRadius: 16,
@@ -609,7 +982,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceHigh,
     alignItems: "center",
   },
-  cancelBtnText: { fontSize: 14, fontWeight: "700", color: colors.textMuted },
+  cancelBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.textMuted,
+  },
   voidConfirmBtn: {
     flex: 2,
     paddingVertical: 12,
@@ -618,5 +995,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  voidConfirmBtnText: { fontSize: 14, fontWeight: "700", color: colors.white },
+  voidConfirmBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.white,
+  },
 });
