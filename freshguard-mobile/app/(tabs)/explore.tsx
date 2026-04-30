@@ -125,7 +125,9 @@ function SaleCard({ sale, onPress }: SaleCardProps) {
 
         <View style={styles.saleMeta}>
           <Text style={styles.saleId}>{sale.saleGroupId}</Text>
-          <Text style={styles.saleDate}>{formatDate(sale.saleDateTime)}</Text>
+          <Text style={styles.saleDate}>
+            {formatDate(sale.saleDateTime)} | {formatRelativeTime(sale.saleDateTime)}
+          </Text>
           <Text style={styles.saleItems}>
             {sale.items.length} {sale.items.length === 1 ? "item" : "items"}
           </Text>
