@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,19 +13,76 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 
+import { getProducts } from "@/src/api/products";
 import { createSale, uploadSaleReceipt } from "@/src/api/sales";
 import { usePosCart } from "@/src/context/pos-cart";
 import { colors } from "@/src/theme/colors";
 import { theme } from "@/src/theme";
 import { CartItem } from "@/components/ui/cart-item";
 import { BrandMark } from "@/components/ui/brand-mark";
+import { Product } from "@/src/types/product";
 
 function generateClientRequestKey() {
   return `sale-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+type CartStockIssue = {
+  productId: string;
+  productName: string;
+  allowedQuantity: number;
+  currentQuantity: number;
+  reason: string;
+};
+
+function getCartStockIssues(
+  cart: ReturnType<typeof usePosCart>["cart"],
+  productsMap: Record<string, Product>
+) {
+  return cart.reduce<CartStockIssue[]>((issues, item) => {
+    const latestProduct = productsMap[item.productId];
+
+    if (!latestProduct || !latestProduct.isActive) {
+      issues.push({
+        productId: item.productId,
+        productName: item.productName,
+        allowedQuantity: 0,
+        currentQuantity: item.quantity,
+        reason: "This product is no longer available for sale.",
+      });
+      return issues;
+    }
+
+    const allowedQuantity = Math.max(0, latestProduct.sellableUnits ?? 0);
+
+    if (allowedQuantity <= 0) {
+      issues.push({
+        productId: item.productId,
+        productName: item.productName,
+        allowedQuantity,
+        currentQuantity: item.quantity,
+        reason: "This product is now out of stock.",
+      });
+      return issues;
+    }
+
+    if (item.quantity > allowedQuantity) {
+      issues.push({
+        productId: item.productId,
+        productName: item.productName,
+        allowedQuantity,
+        currentQuantity: item.quantity,
+        reason: `Only ${allowedQuantity} ${
+          allowedQuantity === 1 ? "unit is" : "units are"
+        } currently sellable.`,
+      });
+    }
+
+    return issues;
+  }, []);
 }
 
 export default function CheckoutScreen() {
@@ -43,10 +100,13 @@ export default function CheckoutScreen() {
   const [receiptAsset, setReceiptAsset] =
     useState<ImagePicker.ImagePickerAsset | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [stockRefreshing, setStockRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [clientRequestKey, setClientRequestKey] = useState(() =>
     generateClientRequestKey()
   );
+  const [hasStockSnapshot, setHasStockSnapshot] = useState(false);
+  const [latestProducts, setLatestProducts] = useState<Record<string, Product>>({});
 
   const cartSubTotal = useMemo(
     () => cart.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
@@ -76,8 +136,50 @@ export default function CheckoutScreen() {
     !isAmountMissing &&
     !isAmountInvalid &&
     (parsedAmountGiven ?? 0) < grandTotal;
+  const cartStockIssues = useMemo(
+    () => (hasStockSnapshot ? getCartStockIssues(cart, latestProducts) : []),
+    [cart, hasStockSnapshot, latestProducts]
+  );
   const canSubmitSale =
-    cart.length > 0 && !submitting && !isAmountMissing && !isAmountInvalid && !isAmountInsufficient;
+    cart.length > 0 &&
+    !submitting &&
+    !stockRefreshing &&
+    hasStockSnapshot &&
+    cartStockIssues.length === 0 &&
+    !isAmountMissing &&
+    !isAmountInvalid &&
+    !isAmountInsufficient;
+
+  const refreshLatestStock = useCallback(async () => {
+    setStockRefreshing(true);
+
+    try {
+      const products = await getProducts();
+      const productsMap = products.reduce<Record<string, Product>>(
+        (map, product) => {
+          map[product._id] = product;
+          return map;
+        },
+        {}
+      );
+      setLatestProducts(productsMap);
+      setHasStockSnapshot(true);
+      return productsMap;
+    } catch {
+      setErrorMsg(
+        "We could not refresh live stock just now. Please try again before recording the sale."
+      );
+      return null;
+    } finally {
+      setStockRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshLatestStock();
+    }, [refreshLatestStock])
+  );
 
   const resetCheckoutState = () => {
     clearCart();
@@ -92,6 +194,44 @@ export default function CheckoutScreen() {
 
   const handleReturnToPos = () => {
     router.replace("/(tabs)");
+  };
+
+  const handleCheckoutQuantityChange = (productId: string, delta: number) => {
+    if (delta <= 0) {
+      updateQuantity(productId, delta);
+      return;
+    }
+
+    const currentItem = cart.find((item) => item.productId === productId);
+    const latestProduct = latestProducts[productId];
+    const allowedQuantity = Math.max(0, latestProduct?.sellableUnits ?? Number.MAX_SAFE_INTEGER);
+
+    if (currentItem && currentItem.quantity >= allowedQuantity) {
+      const productName = latestProduct?.name ?? currentItem.productName;
+      setErrorMsg(
+        `${productName} already matches the latest sellable stock limit.`
+      );
+      return;
+    }
+
+    updateQuantity(productId, delta);
+  };
+
+  const handleAutoAdjustBill = () => {
+    cartStockIssues.forEach((issue) => {
+      if (issue.allowedQuantity <= 0) {
+        removeProduct(issue.productId);
+        return;
+      }
+
+      const reduction = issue.currentQuantity - issue.allowedQuantity;
+
+      if (reduction > 0) {
+        updateQuantity(issue.productId, -reduction);
+      }
+    });
+
+    setErrorMsg("");
   };
 
   const handleClearBill = () => {
@@ -185,6 +325,20 @@ export default function CheckoutScreen() {
     try {
       setSubmitting(true);
       setErrorMsg("");
+      const latestProductsMap = await refreshLatestStock();
+
+      if (!latestProductsMap) {
+        return;
+      }
+
+      const latestIssues = getCartStockIssues(cart, latestProductsMap);
+
+      if (latestIssues.length > 0) {
+        setErrorMsg(
+          `${latestIssues[0].productName} changed stock while this bill was open. Review the bill and try again.`
+        );
+        return;
+      }
 
       const sale = await createSale({
         clientRequestKey,
@@ -293,6 +447,74 @@ export default function CheckoutScreen() {
             <Text style={styles.heroAmount}>Rs. {grandTotal.toFixed(2)}</Text>
           </View>
 
+          {cart.length > 0 ? (
+            <View style={styles.liveStockCard}>
+              <View style={styles.liveStockHeader}>
+                <View style={styles.liveStockTitleWrap}>
+                  <MaterialCommunityIcons
+                    name="database-refresh-outline"
+                    size={16}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.liveStockTitle}>Live Stock Check</Text>
+                </View>
+                <Pressable
+                  onPress={refreshLatestStock}
+                  disabled={stockRefreshing}
+                  style={({ pressed }) => [
+                    styles.liveStockRefreshBtn,
+                    pressed && { opacity: 0.85 },
+                    stockRefreshing && { opacity: 0.7 },
+                  ]}
+                >
+                  {stockRefreshing ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons
+                        name="refresh"
+                        size={14}
+                        color={colors.primary}
+                      />
+                      <Text style={styles.liveStockRefreshText}>Refresh</Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
+              <Text style={styles.liveStockBodyText}>
+                {!hasStockSnapshot
+                  ? "Checking the latest sellable stock before this bill can be completed."
+                  : cartStockIssues.length === 0
+                  ? "This bill matches the latest sellable stock."
+                  : "Some items changed while this bill was open. Adjust them before recording the sale."}
+              </Text>
+              {hasStockSnapshot && cartStockIssues.length > 0 ? (
+                <View style={styles.stockIssueList}>
+                  {cartStockIssues.map((issue) => (
+                    <View key={issue.productId} style={styles.stockIssueItem}>
+                      <Text style={styles.stockIssueName}>{issue.productName}</Text>
+                      <Text style={styles.stockIssueDetail}>
+                        {issue.reason} In bill: {issue.currentQuantity}. Allowed now:{" "}
+                        {issue.allowedQuantity}.
+                      </Text>
+                    </View>
+                  ))}
+                  <Pressable
+                    onPress={handleAutoAdjustBill}
+                    style={styles.autoAdjustBtn}
+                  >
+                    <MaterialCommunityIcons
+                      name="auto-fix"
+                      size={16}
+                      color={colors.white}
+                    />
+                    <Text style={styles.autoAdjustBtnText}>Auto Adjust Bill</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+
           <Pressable onPress={handleReturnToPos} style={styles.addMoreBtn}>
             <MaterialCommunityIcons
               name="playlist-plus"
@@ -326,7 +548,7 @@ export default function CheckoutScreen() {
                 <CartItem
                   key={item.productId}
                   item={item}
-                  onUpdateQuantity={updateQuantity}
+                  onUpdateQuantity={handleCheckoutQuantityChange}
                   onUpdateDiscount={updateDiscount}
                   onRemove={removeProduct}
                 />
@@ -430,7 +652,11 @@ export default function CheckoutScreen() {
                   ]}
                 >
                   {isAmountMissing
-                    ? "Enter the cash amount received to enable checkout."
+                    ? hasStockSnapshot
+                      ? "Enter the cash amount received to enable checkout."
+                      : "Waiting for a live stock check before checkout can continue."
+                    : cartStockIssues.length > 0
+                    ? "Resolve the stock changes above before recording this sale."
                     : isAmountInvalid
                     ? "Amount given must be a valid non-negative number."
                     : isAmountInsufficient
@@ -588,6 +814,87 @@ const styles = StyleSheet.create({
   },
   heroTitle: { fontSize: 22, fontWeight: "800", color: colors.text },
   heroAmount: { fontSize: 26, fontWeight: "800", color: colors.primary },
+  liveStockCard: {
+    backgroundColor: colors.surfaceLow,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    padding: 14,
+    gap: 10,
+  },
+  liveStockHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  liveStockTitleWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  liveStockTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  liveStockRefreshBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: colors.primaryContainer + "55",
+    borderWidth: 1,
+    borderColor: colors.primaryContainer,
+  },
+  liveStockRefreshText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  liveStockBodyText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.textMuted,
+  },
+  stockIssueList: {
+    gap: 10,
+  },
+  stockIssueItem: {
+    backgroundColor: colors.terracottaSoft + "45",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.terracottaSoft,
+    padding: 12,
+    gap: 4,
+  },
+  stockIssueName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.terracotta,
+  },
+  stockIssueDetail: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.terracotta,
+  },
+  autoAdjustBtn: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+  },
+  autoAdjustBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.white,
+  },
   addMoreBtn: {
     alignSelf: "flex-start",
     flexDirection: "row",
