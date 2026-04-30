@@ -64,6 +64,18 @@ function getRangeLabel(range: DashboardRange) {
   return "Today";
 }
 
+function getRangeEmptyMessage(range: DashboardRange) {
+  if (range === "THIS_WEEK") {
+    return "No active sales have been recorded yet this week.";
+  }
+
+  if (range === "THIS_MONTH") {
+    return "No active sales have been recorded yet this month.";
+  }
+
+  return "No active sales have been recorded yet today.";
+}
+
 export default function DashboardScreen() {
   const { setIsAuthenticated } = useAuthSession();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -79,6 +91,8 @@ export default function DashboardScreen() {
   const [latestSaleAmount, setLatestSaleAmount] = useState(0);
   const [latestSaleTime, setLatestSaleTime] = useState("");
   const [selectedRange, setSelectedRange] = useState<DashboardRange>("TODAY");
+  const hasActiveSales = todaysActiveBills > 0;
+  const emptyRangeMessage = getRangeEmptyMessage(selectedRange);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -182,8 +196,9 @@ export default function DashboardScreen() {
               </Text>
               <Text style={styles.title}>Dashboard</Text>
               <Text style={styles.subtitle}>
-                Operational totals are driven by ACTIVE sales only, while VOID
-                sales remain visible for audit.
+                {hasActiveSales
+                  ? "Operational totals are driven by ACTIVE sales only, while VOID sales remain visible for audit."
+                  : `${emptyRangeMessage} Totals stay at zero until a new sale is recorded in this range.`}
               </Text>
             </View>
             <View style={styles.heroBadge}>
@@ -255,6 +270,11 @@ export default function DashboardScreen() {
                   <Text style={styles.metricValue}>
                     {formatMoney(todaysRevenue)}
                   </Text>
+                  <Text style={styles.metricHint}>
+                    {hasActiveSales
+                      ? "Based on completed ACTIVE sales in this range."
+                      : "No active revenue has been generated in this range yet."}
+                  </Text>
                 </View>
 
                 <View style={styles.metricCard}>
@@ -263,6 +283,11 @@ export default function DashboardScreen() {
                   </Text>
                   <Text style={styles.metricValueNumber}>
                     {todaysActiveBills}
+                  </Text>
+                  <Text style={styles.metricHint}>
+                    {hasActiveSales
+                      ? "Bills recorded and still counted as ACTIVE."
+                      : "No ACTIVE bills have been recorded for this range."}
                   </Text>
                 </View>
 
@@ -273,6 +298,11 @@ export default function DashboardScreen() {
                   <Text style={styles.metricValueNumber}>
                     {todaysUnitsSold}
                   </Text>
+                  <Text style={styles.metricHint}>
+                    {hasActiveSales
+                      ? "Units moved through the sales flow in this range."
+                      : "Units sold will appear here once a sale is recorded."}
+                  </Text>
                 </View>
 
                 <View style={[styles.metricCard, styles.metricCardAlert]}>
@@ -282,8 +312,32 @@ export default function DashboardScreen() {
                   <Text style={[styles.metricValueNumber, styles.metricValueAlert]}>
                     {voidedSalesCount}
                   </Text>
+                  <Text style={[styles.metricHint, styles.metricHintAlert]}>
+                    {voidedSalesCount > 0
+                      ? "These remain visible for audit but are excluded from revenue."
+                      : "No voided sales were found in the selected period."}
+                  </Text>
                 </View>
               </View>
+
+              {!hasActiveSales ? (
+                <View style={styles.emptyRangeCard}>
+                  <View style={styles.emptyRangeIcon}>
+                    <MaterialCommunityIcons
+                      name="calendar-blank-outline"
+                      size={20}
+                      color={colors.primary}
+                    />
+                  </View>
+                  <View style={styles.emptyRangeBody}>
+                    <Text style={styles.emptyRangeTitle}>Quiet Sales Window</Text>
+                    <Text style={styles.emptyRangeText}>
+                      {emptyRangeMessage} You can start a new transaction from POS or switch
+                      to another range for a wider summary.
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
 
               <View style={styles.quickActionsCard}>
                 <Text style={styles.sectionTitle}>Quick Actions</Text>
@@ -370,9 +424,20 @@ export default function DashboardScreen() {
                     </Pressable>
                   </>
                 ) : (
-                  <Text style={styles.emptyText}>
-                    No active sales have been recorded yet.
-                  </Text>
+                  <View style={styles.latestEmptyWrap}>
+                    <Text style={styles.emptyText}>{emptyRangeMessage}</Text>
+                    <Pressable
+                      onPress={() => router.push("/(tabs)")}
+                      style={styles.latestEmptyAction}
+                    >
+                      <MaterialCommunityIcons
+                        name="cash-register"
+                        size={16}
+                        color={colors.onPrimaryContainer}
+                      />
+                      <Text style={styles.latestEmptyActionText}>Open POS</Text>
+                    </Pressable>
+                  </View>
                 )}
               </View>
             </>
@@ -613,6 +678,45 @@ const styles = StyleSheet.create({
   metricValueAlert: {
     color: colors.terracotta,
   },
+  metricHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.textMuted,
+  },
+  metricHintAlert: {
+    color: colors.terracotta,
+  },
+  emptyRangeCard: {
+    flexDirection: "row",
+    gap: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant + "60",
+  },
+  emptyRangeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.primaryContainer,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyRangeBody: {
+    flex: 1,
+    gap: 4,
+  },
+  emptyRangeTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  emptyRangeText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.textMuted,
+  },
   latestCard: {
     backgroundColor: colors.surface,
     borderRadius: 18,
@@ -709,6 +813,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: colors.textMuted,
+  },
+  latestEmptyWrap: {
+    gap: 12,
+  },
+  latestEmptyAction: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: colors.primaryContainer,
+  },
+  latestEmptyActionText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.onPrimaryContainer,
   },
   sessionCard: {
     width: "100%",
