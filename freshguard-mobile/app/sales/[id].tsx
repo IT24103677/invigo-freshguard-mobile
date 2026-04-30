@@ -16,6 +16,7 @@ import { useLocalSearchParams, router } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import * as Linking from "expo-linking";
 
 import { getCurrentUser } from "@/src/api/auth";
 import {
@@ -394,6 +395,39 @@ export default function SaleDetailsScreen() {
     }
   };
 
+  const handleShareBillId = async () => {
+    if (!sale) return;
+
+    try {
+      await Share.share({
+        message: `Bill ID: ${sale.saleGroupId}`,
+        title: sale.saleGroupId,
+      });
+    } catch {
+      setErrorMessage("Failed to share the bill ID.");
+    }
+  };
+
+  const handleEmailCustomer = async () => {
+    if (!sale?.customerEmail) return;
+
+    try {
+      const emailUrl = `mailto:${sale.customerEmail}?subject=${encodeURIComponent(
+        `Receipt for ${sale.saleGroupId}`
+      )}`;
+      const supported = await Linking.canOpenURL(emailUrl);
+
+      if (!supported) {
+        setErrorMessage("No email app is available on this device.");
+        return;
+      }
+
+      await Linking.openURL(emailUrl);
+    } catch {
+      setErrorMessage("Failed to open the email app.");
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -484,20 +518,36 @@ export default function SaleDetailsScreen() {
               </View>
             </View>
           </View>
-          <Pressable
-            onPress={handleShareReceipt}
-            style={({ pressed }) => [
-              styles.shareBtn,
-              pressed && { opacity: 0.85 },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="share-variant-outline"
-              size={18}
-              color={colors.primary}
-            />
-            <Text style={styles.shareBtnText}>Share Receipt</Text>
-          </Pressable>
+          <View style={styles.heroActionsRow}>
+            <Pressable
+              onPress={handleShareReceipt}
+              style={({ pressed }) => [
+                styles.shareBtn,
+                pressed && { opacity: 0.85 },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="share-variant-outline"
+                size={18}
+                color={colors.primary}
+              />
+              <Text style={styles.shareBtnText}>Share Receipt</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleShareBillId}
+              style={({ pressed }) => [
+                styles.shareBtn,
+                pressed && { opacity: 0.85 },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="identifier"
+                size={18}
+                color={colors.primary}
+              />
+              <Text style={styles.shareBtnText}>Share Bill ID</Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.financialBento}>
@@ -596,6 +646,22 @@ export default function SaleDetailsScreen() {
                   <Text style={styles.infoKey}>Email</Text>
                   <Text style={styles.infoVal}>{sale.customerEmail}</Text>
                 </View>
+              )}
+              {sale.customerEmail && (
+                <Pressable
+                  onPress={handleEmailCustomer}
+                  style={({ pressed }) => [
+                    styles.inlineActionBtn,
+                    pressed && { opacity: 0.85 },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="email-fast-outline"
+                    size={16}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.inlineActionBtnText}>Email Customer</Text>
+                </Pressable>
               )}
               {sale.notes && (
                 <View style={styles.infoRow}>
@@ -1038,6 +1104,11 @@ const styles = StyleSheet.create({
     ...theme.shadows.card,
   },
   heroWrap: { gap: 12, marginBottom: 4 },
+  heroActionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
   shareBtn: {
     alignSelf: "flex-start",
     flexDirection: "row",
@@ -1239,6 +1310,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoVal: { fontSize: 13, color: colors.text, flex: 2, textAlign: "right" },
+  inlineActionBtn: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+    backgroundColor: colors.primaryContainer + "50",
+    borderWidth: 1,
+    borderColor: colors.primaryContainer,
+  },
+  inlineActionBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.primary,
+  },
   editButton: {
     flexDirection: "row",
     alignItems: "center",
