@@ -18,7 +18,7 @@ const RegisterScreen = ({ navigation }) => {
     if (!form.username.trim()) return setError('Username is required');
     if (form.username.length < 3) return setError('Username must be at least 3 characters');
     if (form.email && !/^\S+@\S+\.\S+$/.test(form.email)) return setError('Invalid email format');
-    if (form.password.length < 5) return setError('Password must be at least 5 characters');
+    if (form.password.length < 6) return setError('Password must be at least 6 characters');
     if (form.password !== form.confirmPassword) return setError('Passwords do not match');
 
     setLoading(true);
