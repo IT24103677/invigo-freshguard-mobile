@@ -30,6 +30,10 @@ function generateClientRequestKey() {
   return `sale-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 type CartStockIssue = {
   productId: string;
   productName: string;
@@ -123,6 +127,7 @@ export default function CheckoutScreen() {
   );
   const grandTotal = +(cartSubTotal - cartDiscount).toFixed(2);
   const totalCartUnits = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const trimmedCustomerEmail = customerEmail.trim();
   const parsedAmountGiven = amountGiven.trim() ? parseFloat(amountGiven) : null;
   const previewChange =
     parsedAmountGiven != null && !Number.isNaN(parsedAmountGiven)
@@ -136,6 +141,8 @@ export default function CheckoutScreen() {
     !isAmountMissing &&
     !isAmountInvalid &&
     (parsedAmountGiven ?? 0) < grandTotal;
+  const isCustomerEmailInvalid =
+    trimmedCustomerEmail.length > 0 && !isValidEmail(trimmedCustomerEmail);
   const cartStockIssues = useMemo(
     () => (hasStockSnapshot ? getCartStockIssues(cart, latestProducts) : []),
     [cart, hasStockSnapshot, latestProducts]
@@ -148,7 +155,8 @@ export default function CheckoutScreen() {
     cartStockIssues.length === 0 &&
     !isAmountMissing &&
     !isAmountInvalid &&
-    !isAmountInsufficient;
+    !isAmountInsufficient &&
+    !isCustomerEmailInvalid;
 
   const refreshLatestStock = useCallback(async () => {
     setStockRefreshing(true);
@@ -322,6 +330,11 @@ export default function CheckoutScreen() {
       return;
     }
 
+    if (isCustomerEmailInvalid) {
+      setErrorMsg("Customer email must be valid before recording the sale.");
+      return;
+    }
+
     try {
       setSubmitting(true);
       setErrorMsg("");
@@ -343,7 +356,7 @@ export default function CheckoutScreen() {
       const sale = await createSale({
         clientRequestKey,
         customerName: customerName.trim() || undefined,
-        customerEmail: customerEmail.trim() || undefined,
+        customerEmail: trimmedCustomerEmail || undefined,
         notes: notes.trim() || undefined,
         amountGiven: parsedAmount,
         items: cart.map((item) => ({
@@ -625,6 +638,18 @@ export default function CheckoutScreen() {
                     onChangeText={setCustomerEmail}
                   />
                 </View>
+                <Text
+                  style={[
+                    styles.fieldHintText,
+                    isCustomerEmailInvalid && styles.fieldHintErrorText,
+                  ]}
+                >
+                  {trimmedCustomerEmail.length === 0
+                    ? "Add an email only if you want a reusable customer contact."
+                    : isCustomerEmailInvalid
+                    ? "Enter a valid email address or clear this field."
+                    : "Customer email looks valid."}
+                </Text>
               </View>
 
               <Text style={styles.checkoutSectionTitle}>Payment and Notes</Text>
