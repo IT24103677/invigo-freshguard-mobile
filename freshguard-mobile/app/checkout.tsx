@@ -69,6 +69,17 @@ export default function CheckoutScreen() {
       ? +(parsedAmountGiven - grandTotal).toFixed(2)
       : null;
 
+  const resetCheckoutState = () => {
+    clearCart();
+    setAmountGiven("");
+    setCustomerName("");
+    setCustomerEmail("");
+    setNotes("");
+    setReceiptAsset(null);
+    setClientRequestKey(generateClientRequestKey());
+    setErrorMsg("");
+  };
+
   const handleReturnToPos = () => {
     router.replace("/(tabs)");
   };
@@ -80,14 +91,7 @@ export default function CheckoutScreen() {
         text: "Clear Bill",
         style: "destructive",
         onPress: () => {
-          clearCart();
-          setAmountGiven("");
-          setCustomerName("");
-          setCustomerEmail("");
-          setNotes("");
-          setReceiptAsset(null);
-          setClientRequestKey(generateClientRequestKey());
-          setErrorMsg("");
+          resetCheckoutState();
           router.replace("/(tabs)");
         },
       },
@@ -201,15 +205,16 @@ export default function CheckoutScreen() {
         }`,
         [
           {
+            text: "View Details",
+            onPress: () => {
+              resetCheckoutState();
+              router.replace(`/sales/${sale._id}`);
+            },
+          },
+          {
             text: "OK",
             onPress: () => {
-              clearCart();
-              setAmountGiven("");
-              setCustomerName("");
-              setCustomerEmail("");
-              setNotes("");
-              setReceiptAsset(null);
-              setClientRequestKey(generateClientRequestKey());
+              resetCheckoutState();
               router.replace("/(tabs)");
             },
           },
