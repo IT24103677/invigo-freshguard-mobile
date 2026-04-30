@@ -96,6 +96,9 @@ interface SaleCardProps {
 function SaleCard({ sale, onPress }: SaleCardProps) {
   const isVoid = sale.status === "VOID";
   const statusColors = saleStatusColors[sale.status];
+  const hasCustomerInfo = Boolean(sale.customerName || sale.customerEmail);
+  const hasReceipt = Boolean(sale.receiptImageUrl);
+  const hasEdits = Boolean(sale.editedAt);
 
   return (
     <Pressable
@@ -126,11 +129,54 @@ function SaleCard({ sale, onPress }: SaleCardProps) {
           <Text style={styles.saleItems}>
             {sale.items.length} {sale.items.length === 1 ? "item" : "items"}
           </Text>
+          {hasCustomerInfo ? (
+            <View style={styles.saleCustomerRow}>
+              <MaterialCommunityIcons
+                name="account-outline"
+                size={13}
+                color={colors.textMuted}
+              />
+              <Text style={styles.saleCustomerText} numberOfLines={1}>
+                {sale.customerName ?? sale.customerEmail}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
 
       <View style={styles.saleCardRight}>
         <Text style={styles.saleTotal}>Rs. {sale.grandTotal.toFixed(2)}</Text>
+        {(hasReceipt || hasEdits) && (
+          <View style={styles.saleIndicatorsRow}>
+            {hasReceipt ? (
+              <View style={styles.saleIndicatorChip}>
+                <MaterialCommunityIcons
+                  name="receipt-text"
+                  size={12}
+                  color={colors.primary}
+                />
+                <Text style={styles.saleIndicatorText}>Receipt</Text>
+              </View>
+            ) : null}
+            {hasEdits ? (
+              <View style={styles.saleIndicatorChip}>
+                <MaterialCommunityIcons
+                  name="pencil-outline"
+                  size={12}
+                  color={colors.secondary}
+                />
+                <Text
+                  style={[
+                    styles.saleIndicatorText,
+                    { color: colors.secondary },
+                  ]}
+                >
+                  Edited
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        )}
         <View style={[styles.badge, { backgroundColor: statusColors.background }]}>
           <Text style={[styles.badgeText, { color: statusColors.text }]}>
             {sale.status}
@@ -1077,8 +1123,38 @@ const styles = StyleSheet.create({
   saleId: { fontSize: 15, fontWeight: "700", color: colors.text },
   saleDate: { fontSize: 12, color: colors.textMuted },
   saleItems: { fontSize: 12, color: colors.textMuted },
-  saleCardRight: { alignItems: "flex-end", gap: 6 },
+  saleCustomerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+  },
+  saleCustomerText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.textMuted,
+  },
+  saleCardRight: { alignItems: "flex-end", gap: 6, maxWidth: 132 },
   saleTotal: { fontSize: 15, fontWeight: "800", color: colors.primary },
+  saleIndicatorsRow: {
+    alignItems: "flex-end",
+    gap: 4,
+  },
+  saleIndicatorChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: colors.primaryContainer + "55",
+  },
+  saleIndicatorText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: colors.primary,
+  },
   badge: {
     borderRadius: 6,
     paddingHorizontal: 8,
