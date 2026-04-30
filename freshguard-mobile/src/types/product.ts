@@ -11,6 +11,9 @@ export interface Product {
   sellingPrice: number;
   imageUrl?: string | null;
   isActive: boolean;
+  sellableUnits?: number;
+  activeBatchCount?: number;
+  nearestExpiryDate?: string | null;
   createdBy?: string | null;
   createdAt: string;
   updatedAt: string;

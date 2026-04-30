@@ -39,8 +39,37 @@ const FILTER_CHIPS = [
 function getProductStatus(
   product: Product
 ): "critical" | "urgent" | "fresh" | "watchlist" {
-  void product;
+  const sellableUnits = product.sellableUnits ?? 0;
+
+  if (sellableUnits <= 0) {
+    return "critical";
+  }
+
+  if (sellableUnits <= 5) {
+    return "urgent";
+  }
+
+  if (product.nearestExpiryDate) {
+    const expiryDate = new Date(product.nearestExpiryDate).getTime();
+    const diffDays = (expiryDate - Date.now()) / (1000 * 60 * 60 * 24);
+
+    if (diffDays <= 3) {
+      return "watchlist";
+    }
+  }
+
   return "fresh";
+}
+
+function formatNearestExpiry(dateStr?: string | null) {
+  if (!dateStr) {
+    return "No active expiry";
+  }
+
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 export default function PosScreen() {
@@ -98,7 +127,9 @@ export default function PosScreen() {
   );
 
   const totalItems = products.length;
-  const criticalCount = 0;
+  const criticalCount = products.filter(
+    (product) => getProductStatus(product) === "critical"
+  ).length;
   const cartSubTotal = cart.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
     0
@@ -314,6 +345,19 @@ export default function PosScreen() {
                   <Text style={styles.productCategory}>
                     Category: {product.category}
                   </Text>
+                  <View style={styles.inventoryMetaRow}>
+                    <Text style={styles.inventoryMetaText}>
+                      {(product.sellableUnits ?? 0).toLocaleString()} units sellable
+                    </Text>
+                    <Text style={styles.inventoryMetaDivider}>|</Text>
+                    <Text style={styles.inventoryMetaText}>
+                      {product.activeBatchCount ?? 0}{" "}
+                      {(product.activeBatchCount ?? 0) === 1 ? "batch" : "batches"}
+                    </Text>
+                  </View>
+                  <Text style={styles.inventoryMetaSubtle}>
+                    Nearest expiry: {formatNearestExpiry(product.nearestExpiryDate)}
+                  </Text>
 
                   <View style={styles.productFooter}>
                     <Text style={styles.productPrice}>
@@ -518,6 +562,25 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     color: colors.outline,
     textTransform: "uppercase",
+  },
+  inventoryMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 2,
+  },
+  inventoryMetaText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.textMuted,
+  },
+  inventoryMetaDivider: {
+    fontSize: 11,
+    color: colors.outline,
+  },
+  inventoryMetaSubtle: {
+    fontSize: 11,
+    color: colors.textMuted,
   },
   productFooter: {
     flexDirection: "row",

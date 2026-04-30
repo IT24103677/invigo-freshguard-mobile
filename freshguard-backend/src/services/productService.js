@@ -1,4 +1,5 @@
 const Product = require("../models/Product");
+const Batch = require("../models/Batch");
 const createHttpError = require("../utils/httpError");
 
 const removeEmptyValues = (payload) =>
@@ -13,7 +14,48 @@ const createProduct = async (payload) => {
 };
 
 const getProducts = async () => {
-  return Product.find({ isActive: true }).sort({ createdAt: -1 });
+  const products = await Product.find({ isActive: true })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const productIds = products.map((product) => product._id);
+
+  if (productIds.length === 0) {
+    return [];
+  }
+
+  const batchSummary = await Batch.aggregate([
+    {
+      $match: {
+        isActive: true,
+        productId: { $in: productIds },
+        quantityOnHand: { $gt: 0 },
+      },
+    },
+    {
+      $group: {
+        _id: "$productId",
+        sellableUnits: { $sum: "$quantityOnHand" },
+        activeBatchCount: { $sum: 1 },
+        nearestExpiryDate: { $min: "$expiryDate" },
+      },
+    },
+  ]);
+
+  const batchSummaryByProductId = new Map(
+    batchSummary.map((summary) => [String(summary._id), summary])
+  );
+
+  return products.map((product) => {
+    const summary = batchSummaryByProductId.get(String(product._id));
+
+    return {
+      ...product,
+      sellableUnits: summary?.sellableUnits ?? 0,
+      activeBatchCount: summary?.activeBatchCount ?? 0,
+      nearestExpiryDate: summary?.nearestExpiryDate ?? null,
+    };
+  });
 };
 
 const getProductById = async (productId) => {
