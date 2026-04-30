@@ -58,6 +58,29 @@ export default function CheckoutScreen() {
       ? +(parsedAmountGiven - grandTotal).toFixed(2)
       : null;
 
+  const handleReturnToPos = () => {
+    router.replace("/(tabs)");
+  };
+
+  const handleClearBill = () => {
+    Alert.alert("Clear Bill", "Do you want to remove all items from this bill?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Clear Bill",
+        style: "destructive",
+        onPress: () => {
+          clearCart();
+          setAmountGiven("");
+          setCustomerName("");
+          setCustomerEmail("");
+          setNotes("");
+          setErrorMsg("");
+          router.replace("/(tabs)");
+        },
+      },
+    ]);
+  };
+
   const handleRecordSale = async () => {
     if (cart.length === 0) {
       setErrorMsg("Add at least one product before checking out.");
@@ -138,7 +161,7 @@ export default function CheckoutScreen() {
             <BrandMark size={22} />
             <Text style={styles.headerTitle}>Checkout</Text>
           </View>
-          <Pressable onPress={clearCart} style={styles.clearBtn}>
+          <Pressable onPress={handleClearBill} style={styles.clearBtn}>
             <MaterialCommunityIcons
               name="trash-can-outline"
               size={16}
@@ -161,6 +184,15 @@ export default function CheckoutScreen() {
             <Text style={styles.heroAmount}>Rs. {grandTotal.toFixed(2)}</Text>
           </View>
 
+          <Pressable onPress={handleReturnToPos} style={styles.addMoreBtn}>
+            <MaterialCommunityIcons
+              name="playlist-plus"
+              size={18}
+              color={colors.primary}
+            />
+            <Text style={styles.addMoreBtnText}>Add More Items</Text>
+          </Pressable>
+
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Bill Items</Text>
             {cart.length === 0 ? (
@@ -171,6 +203,14 @@ export default function CheckoutScreen() {
                   color={colors.outline}
                 />
                 <Text style={styles.emptyText}>Your bill is empty.</Text>
+                <Pressable onPress={handleReturnToPos} style={styles.emptyActionBtn}>
+                  <MaterialCommunityIcons
+                    name="arrow-left"
+                    size={16}
+                    color={colors.white}
+                  />
+                  <Text style={styles.emptyActionText}>Back to POS</Text>
+                </Pressable>
               </View>
             ) : (
               cart.map((item) => (
@@ -185,128 +225,138 @@ export default function CheckoutScreen() {
             )}
           </View>
 
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Subtotal</Text>
-              <Text style={styles.summaryValue}>Rs. {cartSubTotal.toFixed(2)}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Discount</Text>
-              <Text style={styles.summaryValue}>-Rs. {cartDiscount.toFixed(2)}</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryGrandLabel}>Grand Total</Text>
-              <Text style={styles.summaryGrandValue}>Rs. {grandTotal.toFixed(2)}</Text>
-            </View>
-            {previewChange != null && !Number.isNaN(previewChange) ? (
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Change Preview</Text>
-                <Text
-                  style={[
-                    styles.summaryValue,
-                    previewChange < 0 && styles.summaryValueError,
-                  ]}
-                >
-                  Rs. {previewChange.toFixed(2)}
-                </Text>
+          {cart.length > 0 && (
+            <>
+              <View style={styles.summaryCard}>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Subtotal</Text>
+                  <Text style={styles.summaryValue}>
+                    Rs. {cartSubTotal.toFixed(2)}
+                  </Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Discount</Text>
+                  <Text style={styles.summaryValue}>
+                    -Rs. {cartDiscount.toFixed(2)}
+                  </Text>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryGrandLabel}>Grand Total</Text>
+                  <Text style={styles.summaryGrandValue}>
+                    Rs. {grandTotal.toFixed(2)}
+                  </Text>
+                </View>
+                {previewChange != null && !Number.isNaN(previewChange) ? (
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Change Preview</Text>
+                    <Text
+                      style={[
+                        styles.summaryValue,
+                        previewChange < 0 && styles.summaryValueError,
+                      ]}
+                    >
+                      Rs. {previewChange.toFixed(2)}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
-            ) : null}
-          </View>
 
-          <Text style={styles.checkoutSectionTitle}>Customer Details</Text>
-          <View style={styles.checkoutStack}>
-            <View style={styles.field}>
-              <MaterialCommunityIcons
-                name="account-outline"
-                size={16}
-                color={colors.primary}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Customer name (optional)"
-                placeholderTextColor={colors.outline}
-                value={customerName}
-                onChangeText={setCustomerName}
-              />
-            </View>
-            <View style={styles.field}>
-              <MaterialCommunityIcons
-                name="email-outline"
-                size={16}
-                color={colors.primary}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Customer email (optional)"
-                placeholderTextColor={colors.outline}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={customerEmail}
-                onChangeText={setCustomerEmail}
-              />
-            </View>
-          </View>
+              <Text style={styles.checkoutSectionTitle}>Customer Details</Text>
+              <View style={styles.checkoutStack}>
+                <View style={styles.field}>
+                  <MaterialCommunityIcons
+                    name="account-outline"
+                    size={16}
+                    color={colors.primary}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Customer name (optional)"
+                    placeholderTextColor={colors.outline}
+                    value={customerName}
+                    onChangeText={setCustomerName}
+                  />
+                </View>
+                <View style={styles.field}>
+                  <MaterialCommunityIcons
+                    name="email-outline"
+                    size={16}
+                    color={colors.primary}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Customer email (optional)"
+                    placeholderTextColor={colors.outline}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    value={customerEmail}
+                    onChangeText={setCustomerEmail}
+                  />
+                </View>
+              </View>
 
-          <Text style={styles.checkoutSectionTitle}>Payment and Notes</Text>
-          <View style={styles.checkoutStack}>
-            <View style={styles.field}>
-              <MaterialCommunityIcons
-                name="cash"
-                size={16}
-                color={colors.primary}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Amount given"
-                placeholderTextColor={colors.outline}
-                keyboardType="decimal-pad"
-                value={amountGiven}
-                onChangeText={setAmountGiven}
-              />
-            </View>
-            <View style={styles.field}>
-              <MaterialCommunityIcons
-                name="note-text-outline"
-                size={16}
-                color={colors.textMuted}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Notes (optional)"
-                placeholderTextColor={colors.outline}
-                value={notes}
-                onChangeText={setNotes}
-              />
-            </View>
-          </View>
+              <Text style={styles.checkoutSectionTitle}>Payment and Notes</Text>
+              <View style={styles.checkoutStack}>
+                <View style={styles.field}>
+                  <MaterialCommunityIcons
+                    name="cash"
+                    size={16}
+                    color={colors.primary}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Amount given"
+                    placeholderTextColor={colors.outline}
+                    keyboardType="decimal-pad"
+                    value={amountGiven}
+                    onChangeText={setAmountGiven}
+                  />
+                </View>
+                <View style={styles.field}>
+                  <MaterialCommunityIcons
+                    name="note-text-outline"
+                    size={16}
+                    color={colors.textMuted}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Notes (optional)"
+                    placeholderTextColor={colors.outline}
+                    value={notes}
+                    onChangeText={setNotes}
+                  />
+                </View>
+              </View>
 
-          {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
+              {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
 
-          <Pressable
-            onPress={handleRecordSale}
-            disabled={submitting || cart.length === 0}
-            style={({ pressed }) => [
-              styles.recordBtn,
-              pressed && { opacity: 0.85 },
-              (submitting || cart.length === 0) && { opacity: 0.7 },
-            ]}
-          >
-            {submitting ? (
-              <ActivityIndicator color={colors.white} />
-            ) : (
-              <>
-                <MaterialCommunityIcons
-                  name="receipt"
-                  size={18}
-                  color={colors.white}
-                />
-                <Text style={styles.recordBtnText}>
-                  Record Sale - Rs. {grandTotal.toFixed(2)}
-                </Text>
-              </>
-            )}
-          </Pressable>
+              <Pressable
+                onPress={handleRecordSale}
+                disabled={submitting || cart.length === 0}
+                style={({ pressed }) => [
+                  styles.recordBtn,
+                  pressed && { opacity: 0.85 },
+                  (submitting || cart.length === 0) && { opacity: 0.7 },
+                ]}
+              >
+                {submitting ? (
+                  <ActivityIndicator color={colors.white} />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons
+                      name="receipt"
+                      size={18}
+                      color={colors.white}
+                    />
+                    <Text style={styles.recordBtnText}>
+                      Record Sale - Rs. {grandTotal.toFixed(2)}
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            </>
+          )}
 
           <View style={{ height: 24 }} />
         </ScrollView>
@@ -371,6 +421,23 @@ const styles = StyleSheet.create({
   },
   heroTitle: { fontSize: 22, fontWeight: "800", color: colors.text },
   heroAmount: { fontSize: 26, fontWeight: "800", color: colors.primary },
+  addMoreBtn: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.primaryContainer + "55",
+    borderWidth: 1,
+    borderColor: colors.primaryContainer,
+  },
+  addMoreBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primary,
+  },
   section: { gap: 10 },
   sectionTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
   emptyWrap: {
@@ -384,6 +451,21 @@ const styles = StyleSheet.create({
     borderColor: colors.outlineVariant + "50",
   },
   emptyText: { fontSize: 14, color: colors.textMuted },
+  emptyActionBtn: {
+    marginTop: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+  },
+  emptyActionText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.white,
+  },
   summaryCard: {
     backgroundColor: colors.surfaceLow,
     borderRadius: 14,
