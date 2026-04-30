@@ -285,6 +285,61 @@ export default function DashboardScreen() {
                 </View>
               </View>
 
+              <View style={styles.quickActionsCard}>
+                <Text style={styles.sectionTitle}>Quick Actions</Text>
+                <View style={styles.quickActionsGrid}>
+                  <Pressable
+                    onPress={() => router.push("/(tabs)")}
+                    style={({ pressed }) => [
+                      styles.quickActionBtn,
+                      pressed && styles.quickActionBtnPressed,
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="cash-register"
+                      size={18}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.quickActionBtnText}>Open POS</Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => router.push("/explore")}
+                    style={({ pressed }) => [
+                      styles.quickActionBtn,
+                      pressed && styles.quickActionBtnPressed,
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="receipt-text-outline"
+                      size={18}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.quickActionBtnText}>View Sales</Text>
+                  </Pressable>
+
+                  {latestSaleId ? (
+                    <Pressable
+                      onPress={() => router.push(`/sales/${latestSaleId}`)}
+                      style={({ pressed }) => [
+                        styles.quickActionBtn,
+                        styles.quickActionBtnWide,
+                        pressed && styles.quickActionBtnPressed,
+                      ]}
+                    >
+                      <MaterialCommunityIcons
+                        name="history"
+                        size={18}
+                        color={colors.primary}
+                      />
+                      <Text style={styles.quickActionBtnText}>
+                        Latest Sale Details
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              </View>
+
               <View style={styles.latestCard}>
                 <View style={styles.sectionHead}>
                   <Text style={styles.sectionTitle}>Latest Active Sale</Text>
@@ -565,6 +620,43 @@ const styles = StyleSheet.create({
     gap: 10,
     borderWidth: 1,
     borderColor: colors.outlineVariant + "60",
+  },
+  quickActionsCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    padding: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant + "60",
+  },
+  quickActionsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  quickActionBtn: {
+    minWidth: "48%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: colors.primaryContainer + "45",
+    borderWidth: 1,
+    borderColor: colors.primaryContainer,
+  },
+  quickActionBtnWide: {
+    width: "100%",
+  },
+  quickActionBtnPressed: {
+    opacity: 0.86,
+  },
+  quickActionBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primary,
   },
   sectionHead: {
     flexDirection: "row",
