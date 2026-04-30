@@ -12,7 +12,10 @@ type StatusVariant =
   | "optimal"
   | "depleted"
   | "in-stock"
-  | "low-stock";
+  | "low-stock"
+  | "expired"
+  | "expires-soon"
+  | "stable";
 
 interface StatusBadgeProps {
   variant: StatusVariant;
@@ -72,6 +75,21 @@ const variantConfig: Record<
     bg: colors.terracotta,
     text: colors.onPrimary,
     label: "Low Stock",
+  },
+  expired: {
+    bg: colors.tertiaryContainer,
+    text: colors.onTertiaryContainer,
+    label: "Expired",
+  },
+  "expires-soon": {
+    bg: colors.secondaryContainer,
+    text: colors.onSecondaryContainer,
+    label: "Expires Soon",
+  },
+  stable: {
+    bg: colors.surfaceHighest,
+    text: colors.textMuted,
+    label: "Stable",
   },
 };
 

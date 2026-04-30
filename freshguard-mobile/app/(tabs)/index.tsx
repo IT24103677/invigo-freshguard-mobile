@@ -36,9 +36,7 @@ const FILTER_CHIPS = [
   "SNACKS",
 ];
 
-function getProductStatus(
-  product: Product
-): "critical" | "urgent" | "fresh" | "watchlist" {
+function getStockStatus(product: Product): "critical" | "low-stock" | "in-stock" {
   const sellableUnits = product.sellableUnits ?? 0;
 
   if (sellableUnits <= 0) {
@@ -46,19 +44,10 @@ function getProductStatus(
   }
 
   if (sellableUnits <= 5) {
-    return "urgent";
+    return "low-stock";
   }
 
-  if (product.nearestExpiryDate) {
-    const expiryDate = new Date(product.nearestExpiryDate).getTime();
-    const diffDays = (expiryDate - Date.now()) / (1000 * 60 * 60 * 24);
-
-    if (diffDays <= 3) {
-      return "watchlist";
-    }
-  }
-
-  return "fresh";
+  return "in-stock";
 }
 
 function formatNearestExpiry(dateStr?: string | null) {
@@ -70,6 +59,36 @@ function formatNearestExpiry(dateStr?: string | null) {
     month: "short",
     day: "numeric",
   });
+}
+
+function getExpiryStatus(
+  product: Product
+): {
+  variant: "expired" | "expires-soon" | "stable";
+  label: string;
+} {
+  if (!product.nearestExpiryDate || (product.activeBatchCount ?? 0) <= 0) {
+    return { variant: "stable", label: "No Active Batch" };
+  }
+
+  const expiryDate = new Date(product.nearestExpiryDate);
+  const diffDays = Math.floor(
+    (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (diffDays < 0) {
+    return { variant: "expired", label: "Expired" };
+  }
+
+  if (diffDays === 0) {
+    return { variant: "expires-soon", label: "Expires Today" };
+  }
+
+  if (diffDays <= 3) {
+    return { variant: "expires-soon", label: `Expires in ${diffDays}d` };
+  }
+
+  return { variant: "stable", label: `Stable ${formatNearestExpiry(product.nearestExpiryDate)}` };
 }
 
 export default function PosScreen() {
@@ -128,7 +147,7 @@ export default function PosScreen() {
 
   const totalItems = products.length;
   const criticalCount = products.filter(
-    (product) => getProductStatus(product) === "critical"
+    (product) => getStockStatus(product) === "critical"
   ).length;
   const cartSubTotal = cart.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
@@ -305,14 +324,13 @@ export default function PosScreen() {
           </View>
         ) : (
           filtered.map((product) => {
-            const status = getProductStatus(product);
+            const stockStatus = getStockStatus(product);
+            const expiryStatus = getExpiryStatus(product);
             const inCart = cart.find((item) => item.productId === product._id);
             const accentColor =
-              status === "critical"
+              stockStatus === "critical"
                 ? colors.terracotta
-                : status === "urgent"
-                ? colors.onTertiaryContainer
-                : status === "watchlist"
+                : stockStatus === "low-stock"
                 ? colors.secondary
                 : colors.primary;
 
@@ -334,80 +352,86 @@ export default function PosScreen() {
                   borderRadius={12}
                 />
 
-                <View style={styles.productBody}>
-                  <View style={styles.productRow}>
-                    <Text style={styles.productName} numberOfLines={1}>
-                      {product.name}
-                    </Text>
-                    <StatusBadge variant={status} />
-                  </View>
+                  <View style={styles.productBody}>
+                    <View style={styles.productRow}>
+                      <Text style={styles.productName} numberOfLines={1}>
+                        {product.name}
+                      </Text>
+                      <StatusBadge variant={stockStatus} />
+                    </View>
 
-                  <Text style={styles.productCategory}>
-                    Category: {product.category}
-                  </Text>
-                  <View style={styles.inventoryMetaRow}>
-                    <Text style={styles.inventoryMetaText}>
-                      {(product.sellableUnits ?? 0).toLocaleString()} units sellable
+                    <Text style={styles.productCategory}>
+                      Category: {product.category}
                     </Text>
-                    <Text style={styles.inventoryMetaDivider}>|</Text>
-                    <Text style={styles.inventoryMetaText}>
-                      {product.activeBatchCount ?? 0}{" "}
-                      {(product.activeBatchCount ?? 0) === 1 ? "batch" : "batches"}
-                    </Text>
-                  </View>
-                  <Text style={styles.inventoryMetaSubtle}>
-                    Nearest expiry: {formatNearestExpiry(product.nearestExpiryDate)}
-                  </Text>
+                    <View style={styles.inventoryMetaRow}>
+                      <Text style={styles.inventoryMetaText}>
+                        {(product.sellableUnits ?? 0).toLocaleString()} units sellable
+                      </Text>
+                      <Text style={styles.inventoryMetaDivider}>|</Text>
+                      <Text style={styles.inventoryMetaText}>
+                        {product.activeBatchCount ?? 0}{" "}
+                        {(product.activeBatchCount ?? 0) === 1 ? "batch" : "batches"}
+                      </Text>
+                    </View>
+                    <View style={styles.inventoryStatusRow}>
+                      <StatusBadge
+                        variant={expiryStatus.variant}
+                        label={expiryStatus.label}
+                      />
+                      <Text style={styles.inventoryMetaSubtle}>
+                        Nearest expiry: {formatNearestExpiry(product.nearestExpiryDate)}
+                      </Text>
+                    </View>
 
-                  <View style={styles.productFooter}>
-                    <Text style={styles.productPrice}>
-                      Rs. {product.sellingPrice.toFixed(2)}
-                    </Text>
+                    <View style={styles.productFooter}>
+                      <Text style={styles.productPrice}>
+                        Rs. {product.sellingPrice.toFixed(2)}
+                      </Text>
 
-                    {inCart ? (
-                      <View style={styles.productControlWrap}>
-                        <Text style={styles.inBillText}>In bill</Text>
-                        <View style={styles.qtyStepper}>
-                          <Pressable
-                            onPress={() => decrementProduct(product._id)}
-                            hitSlop={8}
-                            style={styles.qtyStepperBtn}
-                          >
-                            <MaterialCommunityIcons
-                              name="minus"
-                              size={14}
-                              color={colors.primary}
-                            />
-                          </Pressable>
-                          <Text style={styles.qtyStepperValue}>
-                            {inCart.quantity}
-                          </Text>
-                          <Pressable
-                            onPress={() => incrementProduct(product)}
-                            hitSlop={8}
-                            style={styles.qtyStepperBtn}
-                          >
-                            <MaterialCommunityIcons
-                              name="plus"
-                              size={14}
-                              color={colors.primary}
-                            />
-                          </Pressable>
+                      {inCart ? (
+                        <View style={styles.productControlWrap}>
+                          <Text style={styles.inBillText}>In bill</Text>
+                          <View style={styles.qtyStepper}>
+                            <Pressable
+                              onPress={() => decrementProduct(product._id)}
+                              hitSlop={8}
+                              style={styles.qtyStepperBtn}
+                            >
+                              <MaterialCommunityIcons
+                                name="minus"
+                                size={14}
+                                color={colors.primary}
+                              />
+                            </Pressable>
+                            <Text style={styles.qtyStepperValue}>
+                              {inCart.quantity}
+                            </Text>
+                            <Pressable
+                              onPress={() => incrementProduct(product)}
+                              hitSlop={8}
+                              style={styles.qtyStepperBtn}
+                            >
+                              <MaterialCommunityIcons
+                                name="plus"
+                                size={14}
+                                color={colors.primary}
+                              />
+                            </Pressable>
+                          </View>
                         </View>
-                      </View>
-                    ) : (
-                      <View style={styles.addHint}>
-                        <MaterialCommunityIcons
-                          name="plus-circle-outline"
-                          size={14}
-                          color={colors.textMuted}
-                        />
-                        <Text style={styles.addHintText}>Add</Text>
-                      </View>
-                    )}
+                      ) : (
+                        <View style={styles.addHint}>
+                          <MaterialCommunityIcons
+                            name="plus-circle-outline"
+                            size={14}
+                            color={colors.textMuted}
+                          />
+                          <Text style={styles.addHintText}>Add</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                </View>
-              </Pressable>
+                </Pressable>
             );
           })
         )}
@@ -581,6 +605,13 @@ const styles = StyleSheet.create({
   inventoryMetaSubtle: {
     fontSize: 11,
     color: colors.textMuted,
+  },
+  inventoryStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 2,
+    flexWrap: "wrap",
   },
   productFooter: {
     flexDirection: "row",
