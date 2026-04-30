@@ -1,5 +1,6 @@
 import { apiClient } from "./client";
 import { ApiResponse, Sale } from "../types/sale";
+import type { ImagePickerAsset } from "expo-image-picker";
 
 interface CreateSaleItemInput {
   productId: string;
@@ -53,5 +54,29 @@ export const voidSale = async (saleId: string, voidReason: string) => {
     `/sales/${saleId}/void`,
     { voidReason }
   );
+  return response.data.data;
+};
+
+export const uploadSaleReceipt = async (
+  saleId: string,
+  asset: ImagePickerAsset
+) => {
+  const formData = new FormData();
+  formData.append("receipt", {
+    uri: asset.uri,
+    name: asset.fileName ?? `receipt-${Date.now()}.jpg`,
+    type: asset.mimeType ?? "image/jpeg",
+  } as unknown as Blob);
+
+  const response = await apiClient.post<ApiResponse<Sale>>(
+    `/sales/${saleId}/receipt`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
   return response.data.data;
 };

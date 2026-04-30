@@ -139,4 +139,38 @@ describe("Sales checkout flow", () => {
     expect(voidedSale.status).toBe("VOID");
     expect(voidedSale.voidReason).toBe("Customer canceled");
   });
+
+  it("attaches a receipt image to an existing sale", async () => {
+    const { token } = await createManager();
+    const { product } = await createProductWithBatch(10);
+
+    const saleResponse = await request(app)
+      .post("/sales")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        amountGiven: 1000,
+        items: [
+          {
+            productId: product._id.toString(),
+            quantity: 1,
+            discountRateApplied: 0,
+          },
+        ],
+      })
+      .expect(201);
+
+    const uploadResponse = await request(app)
+      .post(`/sales/${saleResponse.body.data._id}/receipt`)
+      .set("Authorization", `Bearer ${token}`)
+      .attach("receipt", Buffer.from("fake-image-content"), "receipt-test.jpg")
+      .expect(200);
+
+    expect(uploadResponse.body.success).toBe(true);
+    expect(uploadResponse.body.data.receiptImageUrl).toContain(
+      "/uploads/receipts/"
+    );
+
+    const updatedSale = await Sale.findById(saleResponse.body.data._id);
+    expect(updatedSale.receiptImageUrl).toContain("/uploads/receipts/");
+  });
 });

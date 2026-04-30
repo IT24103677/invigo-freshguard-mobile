@@ -22,6 +22,7 @@ export interface Sale {
   notes: string | null;
   customerName: string | null;
   customerEmail: string | null;
+  receiptImageUrl?: string | null;
   subTotal: number;
   discountTotal: number;
   grandTotal: number;

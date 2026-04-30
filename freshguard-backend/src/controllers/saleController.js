@@ -38,6 +38,38 @@ const createSale = async (req, res) => {
   }
 };
 
+const attachSaleReceipt = async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid sale id.",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Receipt image is required.",
+      });
+    }
+
+    const receiptImageUrl = `${req.protocol}://${req.get("host")}/uploads/receipts/${req.file.filename}`;
+    const sale = await saleService.attachSaleReceipt({
+      saleId: req.params.id,
+      receiptImageUrl,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: sale,
+      message: "Receipt uploaded successfully.",
+    });
+  } catch (error) {
+    return sendError(res, error);
+  }
+};
+
 const getSales = async (req, res) => {
   try {
     const sales = await saleService.getSales(req.query);
@@ -135,6 +167,7 @@ const voidSale = async (req, res) => {
 
 module.exports = {
   createSale,
+  attachSaleReceipt,
   getSales,
   getSaleById,
   updateSale,

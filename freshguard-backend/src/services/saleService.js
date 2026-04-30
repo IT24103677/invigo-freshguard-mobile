@@ -144,6 +144,19 @@ const getSaleById = async (saleId) => {
   return sale;
 };
 
+const attachSaleReceipt = async ({ saleId, receiptImageUrl }) => {
+  const sale = await Sale.findById(saleId);
+
+  if (!sale) {
+    throw createHttpError(404, "Sale not found.");
+  }
+
+  sale.receiptImageUrl = receiptImageUrl;
+  await sale.save();
+
+  return sale;
+};
+
 const updateSale = async ({ saleId, updates, editedBy }) => {
   const sale = await Sale.findById(saleId);
 
@@ -228,6 +241,7 @@ module.exports = {
   createSale,
   getSales,
   getSaleById,
+  attachSaleReceipt,
   updateSale,
   voidSale,
 };

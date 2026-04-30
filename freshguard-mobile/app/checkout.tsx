@@ -14,8 +14,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 
-import { createSale } from "@/src/api/sales";
+import { createSale, uploadSaleReceipt } from "@/src/api/sales";
 import { usePosCart } from "@/src/context/pos-cart";
 import { colors } from "@/src/theme/colors";
 import { theme } from "@/src/theme";
@@ -34,6 +36,8 @@ export default function CheckoutScreen() {
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [notes, setNotes] = useState("");
+  const [receiptAsset, setReceiptAsset] =
+    useState<ImagePicker.ImagePickerAsset | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -74,8 +78,60 @@ export default function CheckoutScreen() {
           setCustomerName("");
           setCustomerEmail("");
           setNotes("");
+          setReceiptAsset(null);
           setErrorMsg("");
           router.replace("/(tabs)");
+        },
+      },
+    ]);
+  };
+
+  const handleAttachReceipt = () => {
+    Alert.alert("Attach Receipt", "Choose how you want to add the receipt image.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Camera",
+        onPress: async () => {
+          const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+          if (!permission.granted) {
+            setErrorMsg("Camera permission is required to capture a receipt.");
+            return;
+          }
+
+          const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ["images"],
+            allowsEditing: true,
+            quality: 0.7,
+          });
+
+          if (!result.canceled) {
+            setReceiptAsset(result.assets[0]);
+          }
+        },
+      },
+      {
+        text: "Gallery",
+        onPress: async () => {
+          const permission =
+            await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+          if (!permission.granted) {
+            setErrorMsg(
+              "Media library permission is required to attach a receipt."
+            );
+            return;
+          }
+
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ["images"],
+            allowsEditing: true,
+            quality: 0.7,
+          });
+
+          if (!result.canceled) {
+            setReceiptAsset(result.assets[0]);
+          }
         },
       },
     ]);
@@ -115,10 +171,24 @@ export default function CheckoutScreen() {
         })),
       });
 
+      let receiptUploadFailed = false;
+
+      if (receiptAsset) {
+        try {
+          await uploadSaleReceipt(sale._id, receiptAsset);
+        } catch {
+          receiptUploadFailed = true;
+        }
+      }
+
       Alert.alert(
-        "Sale Recorded",
+        receiptUploadFailed ? "Sale Recorded (Receipt Pending)" : "Sale Recorded",
         `${sale.saleGroupId}\nTotal: Rs. ${sale.grandTotal}\nChange: Rs. ${
           sale.changeGiven ?? 0
+        }${
+          receiptUploadFailed
+            ? "\nReceipt upload failed. You can retry later from the sale details flow."
+            : ""
         }`,
         [
           {
@@ -129,6 +199,7 @@ export default function CheckoutScreen() {
               setCustomerName("");
               setCustomerEmail("");
               setNotes("");
+              setReceiptAsset(null);
               router.replace("/(tabs)");
             },
           },
@@ -329,6 +400,49 @@ export default function CheckoutScreen() {
                 </View>
               </View>
 
+              <Text style={styles.checkoutSectionTitle}>Receipt Attachment</Text>
+              <View style={styles.receiptCard}>
+                <Text style={styles.receiptText}>
+                  Optionally attach a receipt photo from the camera or gallery.
+                </Text>
+                <View style={styles.receiptActions}>
+                  <Pressable
+                    onPress={handleAttachReceipt}
+                    style={styles.attachReceiptBtn}
+                  >
+                    <MaterialCommunityIcons
+                      name="receipt-text-plus-outline"
+                      size={18}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.attachReceiptBtnText}>
+                      {receiptAsset ? "Replace Receipt" : "Attach Receipt"}
+                    </Text>
+                  </Pressable>
+                  {receiptAsset ? (
+                    <Pressable
+                      onPress={() => setReceiptAsset(null)}
+                      style={styles.removeReceiptBtn}
+                    >
+                      <Text style={styles.removeReceiptBtnText}>Remove</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+
+                {receiptAsset ? (
+                  <View style={styles.receiptPreviewWrap}>
+                    <Image
+                      source={{ uri: receiptAsset.uri }}
+                      style={styles.receiptPreview}
+                      contentFit="cover"
+                    />
+                    <Text style={styles.receiptPreviewLabel}>
+                      Receipt ready to upload
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+
               {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
 
               <Pressable
@@ -515,6 +629,68 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   checkoutStack: { gap: 12 },
+  receiptCard: {
+    backgroundColor: colors.surfaceLow,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    padding: 14,
+    gap: 12,
+  },
+  receiptText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.textMuted,
+  },
+  receiptActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flexWrap: "wrap",
+  },
+  attachReceiptBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.primaryContainer + "55",
+    borderWidth: 1,
+    borderColor: colors.primaryContainer,
+  },
+  attachReceiptBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  removeReceiptBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.terracottaSoft + "55",
+    borderWidth: 1,
+    borderColor: colors.terracottaSoft,
+  },
+  removeReceiptBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.terracotta,
+  },
+  receiptPreviewWrap: {
+    gap: 8,
+  },
+  receiptPreview: {
+    width: "100%",
+    height: 180,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceHigh,
+  },
+  receiptPreviewLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.primary,
+  },
   field: {
     flexDirection: "row",
     alignItems: "center",

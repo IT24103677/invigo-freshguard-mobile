@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 
 import { getCurrentUser } from "@/src/api/auth";
 import { getSaleById, updateSale, voidSale } from "@/src/api/sales";
@@ -403,6 +404,29 @@ export default function SaleDetailsScreen() {
                   <Text style={styles.infoVal}>{sale.notes}</Text>
                 </View>
               )}
+            </View>
+          </View>
+        )}
+
+        {sale.receiptImageUrl && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeading}>
+              <MaterialCommunityIcons
+                name="receipt-text"
+                size={20}
+                color={colors.primary}
+              />
+              <Text style={styles.sectionTitle}>Receipt Attachment</Text>
+            </View>
+            <View style={styles.receiptCard}>
+              <Image
+                source={{ uri: sale.receiptImageUrl }}
+                style={styles.receiptImage}
+                contentFit="cover"
+              />
+              <Text style={styles.receiptCaption}>
+                Receipt image attached to this sale.
+              </Text>
             </View>
           </View>
         )}
@@ -868,6 +892,25 @@ const styles = StyleSheet.create({
     borderColor: colors.outlineVariant + "50",
     gap: 10,
     ...theme.shadows.card,
+  },
+  receiptCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant + "50",
+    gap: 10,
+    ...theme.shadows.card,
+  },
+  receiptImage: {
+    width: "100%",
+    height: 220,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceHigh,
+  },
+  receiptCaption: {
+    fontSize: 13,
+    color: colors.textMuted,
   },
   infoRow: {
     flexDirection: "row",
