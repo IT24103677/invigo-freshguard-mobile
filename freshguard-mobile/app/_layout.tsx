@@ -8,6 +8,7 @@ import "react-native-reanimated";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { AuthSessionProvider } from "@/src/context/auth-session";
+import { PosCartProvider } from "@/src/context/pos-cart";
 import { getCurrentUser } from "@/src/api/auth";
 import { getAuthToken, deleteAuthToken } from "@/src/storage/token";
 import { theme } from "@/src/theme";
@@ -49,6 +50,7 @@ export default function RootLayout() {
 
     const isInsideTabs = pathname.startsWith("/(tabs)") || pathname === "/";
     const isInsideSalesDetails = pathname.startsWith("/sales/");
+    const isCheckout = pathname === "/checkout";
     const isOnLogin = pathname === "/login";
 
     if (isAuthenticated && isOnLogin) {
@@ -56,7 +58,7 @@ export default function RootLayout() {
       return;
     }
 
-    if (!isAuthenticated && (isInsideTabs || isInsideSalesDetails)) {
+    if (!isAuthenticated && (isInsideTabs || isInsideSalesDetails || isCheckout)) {
       router.replace("/login");
     }
   }, [isAuthenticated, isBootstrapping, pathname, router]);
@@ -77,17 +79,20 @@ export default function RootLayout() {
 
   return (
     <AuthSessionProvider value={{ isAuthenticated, setIsAuthenticated }}>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack initialRouteName="login">
-          <Stack.Screen name="login" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="modal"
-            options={{ presentation: "modal", title: "Modal" }}
-          />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
+      <PosCartProvider>
+        <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+          <Stack initialRouteName="login">
+            <Stack.Screen name="login" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="checkout" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="modal"
+              options={{ presentation: "modal", title: "Modal" }}
+            />
+          </Stack>
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </PosCartProvider>
     </AuthSessionProvider>
   );
 }
