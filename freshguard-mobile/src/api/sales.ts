@@ -28,11 +28,24 @@ interface GetSalesParams {
   from?: string;
   to?: string;
   recordedBy?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface SalesPaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
 }
 
 export const getSales = async (params?: GetSalesParams) => {
   const response = await apiClient.get<ApiResponse<Sale[]>>("/sales", { params });
-  return response.data.data;
+  return {
+    items: response.data.data,
+    meta: response.data.meta as SalesPaginationMeta | undefined,
+  };
 };
 
 export const getSaleById = async (saleId: string) => {

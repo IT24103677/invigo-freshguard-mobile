@@ -148,6 +148,7 @@ export default function SalesScreen() {
   const [salesUsers, setSalesUsers] = useState<AuthUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -157,16 +158,30 @@ export default function SalesScreen() {
   const [selectedRoleFilter, setSelectedRoleFilter] =
     useState<RoleFilter>("ALL_ROLES");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMoreSales, setHasMoreSales] = useState(false);
 
-  const loadSales = useCallback(async (isRefresh = false) => {
+  const loadSales = useCallback(async (options?: {
+    isRefresh?: boolean;
+    append?: boolean;
+    page?: number;
+  }) => {
+    const isRefresh = options?.isRefresh ?? false;
+    const append = options?.append ?? false;
+    const page = options?.page ?? 1;
+
     try {
       if (isRefresh) {
         setRefreshing(true);
+      } else if (append) {
+        setLoadingMore(true);
       } else {
         setLoading(true);
       }
 
-      setErrorMsg("");
+      if (!append) {
+        setErrorMsg("");
+      }
       const user = await getCurrentUser();
       setCurrentUser(user);
 
@@ -180,21 +195,39 @@ export default function SalesScreen() {
         }
       }
 
-      const data = await getSales(getDateRangeParams(selectedRange));
-      setSales(data);
+      const data = await getSales({
+        ...getDateRangeParams(selectedRange),
+        page,
+        limit: 12,
+      });
+
+      setSales((current) => (append ? [...current, ...data.items] : data.items));
+      setCurrentPage(data.meta?.page ?? page);
+      setHasMoreSales(data.meta?.hasMore ?? false);
     } catch {
-      setErrorMsg("Failed to load sales.");
+      if (!append) {
+        setErrorMsg("Failed to load sales.");
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   }, [selectedRange, selectedRoleFilter]);
 
   useFocusEffect(
     useCallback(() => {
-      loadSales();
+      loadSales({ page: 1 });
     }, [loadSales])
   );
+
+  const handleLoadMore = useCallback(() => {
+    if (loadingMore || loading || refreshing || !hasMoreSales) {
+      return;
+    }
+
+    loadSales({ append: true, page: currentPage + 1 });
+  }, [currentPage, hasMoreSales, loadSales, loading, loadingMore, refreshing]);
 
   const handleLogout = () => {
     Alert.alert("Log Out", "Do you want to end your current session?", [
@@ -321,7 +354,7 @@ export default function SalesScreen() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() => loadSales(true)}
+            onRefresh={() => loadSales({ isRefresh: true, page: 1 })}
             tintColor={colors.primary}
           />
         }
@@ -369,7 +402,7 @@ export default function SalesScreen() {
 
         <View style={styles.filterSummaryRow}>
           <Text style={styles.filterSummaryText}>
-            {selectedRangeLabel} · {selectedRoleLabel}
+            {selectedRangeLabel} | {selectedRoleLabel}
           </Text>
           <Pressable
             onPress={() => setShowAdvancedFilters((current) => !current)}
@@ -644,13 +677,53 @@ export default function SalesScreen() {
               </Text>
             </View>
           ) : (
-            filteredSales.map((sale) => (
-              <SaleCard
-                key={sale._id}
-                sale={sale}
-                onPress={() => router.push(`/sales/${sale._id}`)}
-              />
-            ))
+            <>
+              {filteredSales.map((sale) => (
+                <SaleCard
+                  key={sale._id}
+                  sale={sale}
+                  onPress={() => router.push(`/sales/${sale._id}`)}
+                />
+              ))}
+
+              {searchQuery.trim() === "" &&
+              selectedFilter === "ALL" &&
+              selectedRoleFilter === "ALL_ROLES" &&
+              hasMoreSales ? (
+                <Pressable
+                  onPress={handleLoadMore}
+                  disabled={loadingMore}
+                  style={({ pressed }) => [
+                    styles.loadMoreButton,
+                    pressed && !loadingMore && styles.loadMoreButtonPressed,
+                    loadingMore && styles.loadMoreButtonDisabled,
+                  ]}
+                >
+                  {loadingMore ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <MaterialCommunityIcons
+                      name="chevron-double-down"
+                      size={18}
+                      color={colors.primary}
+                    />
+                  )}
+                  <Text style={styles.loadMoreButtonText}>
+                    {loadingMore ? "Loading more sales..." : "Load More Sales"}
+                  </Text>
+                </Pressable>
+              ) : null}
+
+              {searchQuery.trim() === "" &&
+              selectedFilter === "ALL" &&
+              selectedRoleFilter === "ALL_ROLES" &&
+              !hasMoreSales &&
+              sales.length > 0 ? (
+                <Text style={styles.endOfListText}>
+                  You&apos;ve reached the end of the sales history for this range.
+                </Text>
+              ) : null}
+            </>
           )}
         </View>
 
@@ -1023,5 +1096,36 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   emptySectionText: { fontSize: 14, color: colors.textMuted, textAlign: "center" },
+  loadMoreButton: {
+    marginTop: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: colors.primaryContainer + "55",
+    borderWidth: 1,
+    borderColor: colors.primaryContainer,
+  },
+  loadMoreButtonPressed: {
+    opacity: 0.88,
+  },
+  loadMoreButtonDisabled: {
+    opacity: 0.72,
+  },
+  loadMoreButtonText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  endOfListText: {
+    marginTop: 4,
+    textAlign: "center",
+    fontSize: 12,
+    color: colors.textMuted,
+    fontWeight: "600",
+  },
 });
 

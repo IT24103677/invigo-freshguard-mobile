@@ -112,6 +112,12 @@ const createSale = async (payload) => {
 
 const getSales = async (query) => {
   const filter = {};
+  const page = Math.max(Number.parseInt(query.page ?? "1", 10) || 1, 1);
+  const limit = Math.min(
+    Math.max(Number.parseInt(query.limit ?? "15", 10) || 15, 1),
+    50
+  );
+  const skip = (page - 1) * limit;
 
   if (query.status) {
     filter.status = query.status;
@@ -131,7 +137,21 @@ const getSales = async (query) => {
     }
   }
 
-  return Sale.find(filter).sort({ saleDateTime: -1 });
+  const [items, total] = await Promise.all([
+    Sale.find(filter).sort({ saleDateTime: -1 }).skip(skip).limit(limit),
+    Sale.countDocuments(filter),
+  ]);
+
+  return {
+    items,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasMore: skip + items.length < total,
+    },
+  };
 };
 
 const getSaleById = async (saleId) => {

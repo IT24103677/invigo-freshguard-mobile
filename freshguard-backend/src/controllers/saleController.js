@@ -72,11 +72,12 @@ const attachSaleReceipt = async (req, res) => {
 
 const getSales = async (req, res) => {
   try {
-    const sales = await saleService.getSales(req.query);
+    const salesResult = await saleService.getSales(req.query);
 
     return res.status(200).json({
       success: true,
-      data: sales,
+      data: salesResult.items,
+      meta: salesResult.pagination,
       message: "Sales fetched successfully.",
     });
   } catch (error) {
