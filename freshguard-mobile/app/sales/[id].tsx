@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  RefreshControl,
   Share,
   ScrollView,
   StyleSheet,
@@ -174,6 +175,7 @@ export default function SaleDetailsScreen() {
   const [sale, setSale] = useState<Sale | null>(null);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   const [showEditPanel, setShowEditPanel] = useState(false);
@@ -191,7 +193,7 @@ export default function SaleDetailsScreen() {
   const [receiptMsg, setReceiptMsg] = useState("");
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
 
-  const loadSale = useCallback(async () => {
+  const loadSale = useCallback(async (isRefresh = false) => {
     if (!id) {
       setErrorMessage("Sale ID is missing.");
       setLoading(false);
@@ -199,7 +201,11 @@ export default function SaleDetailsScreen() {
     }
 
     try {
-      setLoading(true);
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setErrorMessage("");
       const [saleResult, userResult] = await Promise.all([
         getSaleById(id),
@@ -215,6 +221,7 @@ export default function SaleDetailsScreen() {
       setErrorMessage("Failed to load sale details.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [id]);
 
@@ -453,6 +460,13 @@ export default function SaleDetailsScreen() {
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => loadSale(true)}
+            tintColor={colors.primary}
+          />
+        }
       >
         <View style={styles.heroWrap}>
           <View style={styles.heroBanner}>
