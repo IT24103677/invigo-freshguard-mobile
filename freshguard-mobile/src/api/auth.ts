@@ -24,6 +24,13 @@ export const getCurrentUser = async () => {
   return response.data.data.user;
 };
 
+export const getSalesUsers = async () => {
+  const response = await apiClient.get<ApiResponse<{ users: AuthUser[] }>>(
+    "/auth/sales-users"
+  );
+  return response.data.data.users;
+};
+
 export const logoutUser = async () => {
   await deleteAuthToken();
 };

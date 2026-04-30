@@ -108,8 +108,27 @@ const me = async (req, res) => {
   });
 };
 
+const listSalesUsers = async (_req, res) => {
+  try {
+    const users = await User.find({ isActive: true })
+      .select("name email role isActive createdAt updatedAt")
+      .sort({ name: 1 });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        users: users.map(sanitizeUser),
+      },
+      message: "Sales users fetched successfully.",
+    });
+  } catch (error) {
+    return sendError(res, error);
+  }
+};
+
 module.exports = {
   register,
   login,
   me,
+  listSalesUsers,
 };

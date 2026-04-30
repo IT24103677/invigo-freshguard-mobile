@@ -14,16 +14,18 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 
-import { logoutUser } from "@/src/api/auth";
+import { getCurrentUser, getSalesUsers, logoutUser } from "@/src/api/auth";
 import { useAuthSession } from "@/src/context/auth-session";
 import { getSales } from "@/src/api/sales";
 import { colors, saleStatusColors } from "@/src/theme/colors";
 import { theme } from "@/src/theme";
 import { Sale } from "@/src/types/sale";
 import { BrandMark } from "@/components/ui/brand-mark";
+import { AuthUser } from "@/src/types/auth";
 
-type SalesFilter = "ALL" | "ACTIVE" | "VOID" | "TODAY";
+type SalesFilter = "ALL" | "ACTIVE" | "VOID";
 type DateRangeFilter = "ALL_TIME" | "TODAY" | "THIS_WEEK" | "THIS_MONTH";
+type RoleFilter = "ALL_ROLES" | "ADMIN" | "MANAGER" | "STAFF";
 
 function formatRelativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -142,6 +144,8 @@ function SaleCard({ sale, onPress }: SaleCardProps) {
 export default function SalesScreen() {
   const { setIsAuthenticated } = useAuthSession();
   const [sales, setSales] = useState<Sale[]>([]);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [salesUsers, setSalesUsers] = useState<AuthUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -150,6 +154,9 @@ export default function SalesScreen() {
   const [selectedFilter, setSelectedFilter] = useState<SalesFilter>("ALL");
   const [selectedRange, setSelectedRange] =
     useState<DateRangeFilter>("ALL_TIME");
+  const [selectedRoleFilter, setSelectedRoleFilter] =
+    useState<RoleFilter>("ALL_ROLES");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const loadSales = useCallback(async (isRefresh = false) => {
     try {
@@ -160,6 +167,19 @@ export default function SalesScreen() {
       }
 
       setErrorMsg("");
+      const user = await getCurrentUser();
+      setCurrentUser(user);
+
+      if (user.role === "ADMIN" || user.role === "MANAGER") {
+        const users = await getSalesUsers();
+        setSalesUsers(users);
+      } else {
+        setSalesUsers([]);
+        if (selectedRoleFilter !== "ALL_ROLES") {
+          setSelectedRoleFilter("ALL_ROLES");
+        }
+      }
+
       const data = await getSales(getDateRangeParams(selectedRange));
       setSales(data);
     } catch {
@@ -168,7 +188,7 @@ export default function SalesScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedRange]);
+  }, [selectedRange, selectedRoleFilter]);
 
   useFocusEffect(
     useCallback(() => {
@@ -198,15 +218,25 @@ export default function SalesScreen() {
 
   const filteredSales = useMemo(() => {
     const trimmedQuery = searchQuery.trim().toLowerCase();
+    const salesUsersById = new Map(salesUsers.map((user) => [user.id, user]));
 
     return sales.filter((sale) => {
       const matchesFilter =
         selectedFilter === "ALL" ||
         (selectedFilter === "ACTIVE" && sale.status === "ACTIVE") ||
-        (selectedFilter === "VOID" && sale.status === "VOID") ||
-        (selectedFilter === "TODAY" && isToday(sale.saleDateTime));
+        (selectedFilter === "VOID" && sale.status === "VOID");
 
       if (!matchesFilter) return false;
+
+      if (selectedRoleFilter !== "ALL_ROLES") {
+        const recordedByUser = sale.recordedBy
+          ? salesUsersById.get(sale.recordedBy)
+          : null;
+
+        if (!recordedByUser || recordedByUser.role !== selectedRoleFilter) {
+          return false;
+        }
+      }
 
       if (!trimmedQuery) return true;
 
@@ -216,13 +246,31 @@ export default function SalesScreen() {
         (sale.customerEmail ?? "").toLowerCase().includes(trimmedQuery)
       );
     });
-  }, [sales, searchQuery, selectedFilter]);
+  }, [sales, salesUsers, searchQuery, selectedFilter, selectedRoleFilter]);
 
   const voidSales = filteredSales.filter((sale) => sale.status === "VOID");
   const todaysActiveSales = sales.filter(
     (sale) => sale.status === "ACTIVE" && isToday(sale.saleDateTime)
   );
   const urgentCount = sales.filter((sale) => sale.status === "VOID").length;
+  const canFilterRecordedBy =
+    currentUser?.role === "ADMIN" || currentUser?.role === "MANAGER";
+  const selectedRangeLabel =
+    selectedRange === "ALL_TIME"
+      ? "All time"
+      : selectedRange === "TODAY"
+      ? "Today"
+      : selectedRange === "THIS_WEEK"
+      ? "This week"
+      : "This month";
+  const selectedRoleLabel =
+    selectedRoleFilter === "ALL_ROLES"
+      ? "All roles"
+      : selectedRoleFilter === "ADMIN"
+      ? "Admins"
+      : selectedRoleFilter === "MANAGER"
+      ? "Managers"
+      : "Staff";
 
   if (loading) {
     return (
@@ -295,56 +343,6 @@ export default function SalesScreen() {
           activity in one place.
         </Text>
 
-        <View style={styles.rangeHeader}>
-          <Text style={styles.rangeHeaderLabel}>Date Range</Text>
-          <Text style={styles.rangeHeaderValue}>
-            {selectedRange === "ALL_TIME"
-              ? "All recorded sales"
-              : selectedRange === "TODAY"
-              ? "Today only"
-              : selectedRange === "THIS_WEEK"
-              ? "This week"
-              : "This month"}
-          </Text>
-        </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.rangeRow}
-        >
-          {(
-            [
-              ["ALL_TIME", "All Time"],
-              ["TODAY", "Today"],
-              ["THIS_WEEK", "This Week"],
-              ["THIS_MONTH", "This Month"],
-            ] as [DateRangeFilter, string][]
-          ).map(([range, label]) => {
-            const isSelected = selectedRange === range;
-
-            return (
-              <Pressable
-                key={range}
-                onPress={() => setSelectedRange(range)}
-                style={[
-                  styles.rangeChip,
-                  isSelected && styles.rangeChipSelected,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.rangeChipText,
-                    isSelected && styles.rangeChipTextSelected,
-                  ]}
-                >
-                  {label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-
         <View style={styles.searchBar}>
           <MaterialCommunityIcons
             name="magnify"
@@ -369,12 +367,29 @@ export default function SalesScreen() {
           ) : null}
         </View>
 
+        <View style={styles.filterSummaryRow}>
+          <Text style={styles.filterSummaryText}>
+            {selectedRangeLabel} · {selectedRoleLabel}
+          </Text>
+          <Pressable
+            onPress={() => setShowAdvancedFilters((current) => !current)}
+            style={styles.moreFiltersBtn}
+          >
+            <MaterialCommunityIcons
+              name={showAdvancedFilters ? "tune-off" : "tune-variant"}
+              size={16}
+              color={colors.primary}
+            />
+            <Text style={styles.moreFiltersBtnText}>More Filters</Text>
+          </Pressable>
+        </View>
+
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterRow}
         >
-          {(["ALL", "ACTIVE", "VOID", "TODAY"] as SalesFilter[]).map((filter) => {
+          {(["ALL", "ACTIVE", "VOID"] as SalesFilter[]).map((filter) => {
             const isSelected = selectedFilter === filter;
 
             return (
@@ -398,6 +413,115 @@ export default function SalesScreen() {
             );
           })}
         </ScrollView>
+
+        {showAdvancedFilters && (
+          <View style={styles.advancedFiltersCard}>
+            <View style={styles.rangeHeader}>
+              <Text style={styles.rangeHeaderLabel}>Date Range</Text>
+              <Text style={styles.rangeHeaderValue}>{selectedRangeLabel}</Text>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.rangeRow}
+            >
+              {(
+                [
+                  ["ALL_TIME", "All Time"],
+                  ["TODAY", "Today"],
+                  ["THIS_WEEK", "This Week"],
+                  ["THIS_MONTH", "This Month"],
+                ] as [DateRangeFilter, string][]
+              ).map(([range, label]) => {
+                const isSelected = selectedRange === range;
+
+                return (
+                  <Pressable
+                    key={range}
+                    onPress={() => setSelectedRange(range)}
+                    style={[
+                      styles.rangeChip,
+                      isSelected && styles.rangeChipSelected,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.rangeChipText,
+                        isSelected && styles.rangeChipTextSelected,
+                      ]}
+                    >
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            {canFilterRecordedBy && (
+              <>
+                <View style={styles.rangeHeader}>
+                  <Text style={styles.rangeHeaderLabel}>Recorded By Role</Text>
+                  <Text style={styles.rangeHeaderValue}>{selectedRoleLabel}</Text>
+                </View>
+
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.rangeRow}
+                >
+                  {(
+                    [
+                      ["ALL_ROLES", "All Roles"],
+                      ["ADMIN", "Admins"],
+                      ["MANAGER", "Managers"],
+                      ["STAFF", "Staff"],
+                    ] as [RoleFilter, string][]
+                  ).map(([role, label]) => {
+                    const isSelected = selectedRoleFilter === role;
+
+                    return (
+                      <Pressable
+                        key={role}
+                        onPress={() => setSelectedRoleFilter(role)}
+                        style={[
+                          styles.rangeChip,
+                          isSelected && styles.rangeChipSelected,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.rangeChipText,
+                            isSelected && styles.rangeChipTextSelected,
+                          ]}
+                        >
+                          {label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            )}
+
+            <Pressable
+              onPress={() => {
+                setSelectedRange("ALL_TIME");
+                setSelectedRoleFilter("ALL_ROLES");
+              }}
+              style={styles.clearFiltersBtn}
+            >
+              <MaterialCommunityIcons
+                name="filter-remove-outline"
+                size={16}
+                color={colors.terracotta}
+              />
+              <Text style={styles.clearFiltersBtnText}>
+                Clear Advanced Filters
+              </Text>
+            </Pressable>
+          </View>
+        )}
 
         {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
 
@@ -663,6 +787,35 @@ const styles = StyleSheet.create({
     borderColor: colors.outlineVariant + "60",
     ...theme.shadows.card,
   },
+  filterSummaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 10,
+  },
+  filterSummaryText: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.textMuted,
+    fontWeight: "600",
+  },
+  moreFiltersBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: colors.primaryContainer + "50",
+    borderWidth: 1,
+    borderColor: colors.primaryContainer,
+  },
+  moreFiltersBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.primary,
+  },
   searchInput: {
     flex: 1,
     fontSize: 14,
@@ -693,6 +846,34 @@ const styles = StyleSheet.create({
   },
   filterChipTextSelected: {
     color: colors.white,
+  },
+  advancedFiltersCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant + "60",
+    padding: 14,
+    gap: 4,
+    marginBottom: 8,
+    ...theme.shadows.card,
+  },
+  clearFiltersBtn: {
+    marginTop: 6,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+    backgroundColor: colors.terracottaSoft + "55",
+    borderWidth: 1,
+    borderColor: colors.terracottaSoft,
+  },
+  clearFiltersBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.terracotta,
   },
   errorText: {
     color: colors.terracotta,

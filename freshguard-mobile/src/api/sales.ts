@@ -27,6 +27,7 @@ interface GetSalesParams {
   status?: "ACTIVE" | "VOID";
   from?: string;
   to?: string;
+  recordedBy?: string;
 }
 
 export const getSales = async (params?: GetSalesParams) => {
