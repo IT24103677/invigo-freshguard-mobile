@@ -8,12 +8,89 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useLocalSearchParams, router } from "expo-router";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { getCurrentUser } from "@/src/api/auth";
 import { getSaleById, voidSale } from "@/src/api/sales";
+import { colors, saleStatusColors } from "@/src/theme/colors";
+import { theme } from "@/src/theme";
 import { AuthUser } from "@/src/types/auth";
-import { Sale } from "@/src/types/sale";
+import { Sale, SaleItem } from "@/src/types/sale";
+import { ProductImage } from "@/components/ui/product-image";
+import { StatusBadge } from "@/components/ui/status-badge";
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatDateTime(dateStr: string) {
+  return new Date(dateStr).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// ── sub-components ────────────────────────────────────────────────────────────
+
+function SaleItemCard({ item }: { item: SaleItem }) {
+  const discountAmt = item.quantity * item.unitPriceSnapshot * (item.discountRateApplied / 100);
+  return (
+    <View style={styles.itemCard}>
+      <View style={styles.itemHeader}>
+        <ProductImage
+          imageUrl={null}
+          productName={item.productNameSnapshot}
+          category="default"
+          size={48}
+          borderRadius={10}
+        />
+        <View style={styles.itemMeta}>
+          <Text style={styles.itemName}>{item.productNameSnapshot}</Text>
+          <Text style={styles.itemSub}>
+            {item.quantity} × Rs. {item.unitPriceSnapshot.toFixed(2)}
+          </Text>
+          {item.discountRateApplied > 0 && (
+            <Text style={styles.itemDiscount}>
+              Discount {item.discountRateApplied}% (−Rs. {discountAmt.toFixed(2)})
+            </Text>
+          )}
+        </View>
+        <Text style={styles.itemTotal}>Rs. {item.lineTotal.toFixed(2)}</Text>
+      </View>
+
+      {/* Batch allocations */}
+      {item.allocations.length > 0 && (
+        <View style={styles.allocations}>
+          <Text style={styles.allocLabel}>BATCH ALLOCATIONS</Text>
+          {item.allocations.map((a, idx) => (
+            <View key={`${a.batchId}-${idx}`} style={styles.allocRow}>
+              <MaterialCommunityIcons name="cube-outline" size={14} color={colors.primary} />
+              <Text style={styles.allocText}>
+                {String(a.batchId).slice(-8).toUpperCase()} — {a.qtyDeducted} units
+              </Text>
+              <Text style={styles.allocExpiry}>
+                Exp: {formatDate(a.expiryDateSnapshot)}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ── main screen ───────────────────────────────────────────────────────────────
 
 export default function SaleDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -22,16 +99,12 @@ export default function SaleDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [voidReason, setVoidReason] = useState("");
-  const [voidMessage, setVoidMessage] = useState("");
+  const [voidMsg, setVoidMsg] = useState("");
   const [isVoiding, setIsVoiding] = useState(false);
+  const [showVoidPanel, setShowVoidPanel] = useState(false);
 
   const loadSale = async () => {
-    if (!id) {
-      setErrorMessage("Sale id is missing.");
-      setLoading(false);
-      return;
-    }
-
+    if (!id) { setErrorMessage("Sale ID is missing."); setLoading(false); return; }
     try {
       setLoading(true);
       setErrorMessage("");
@@ -41,42 +114,32 @@ export default function SaleDetailsScreen() {
       ]);
       setSale(saleResult);
       setCurrentUser(userResult);
-    } catch (error) {
+    } catch {
       setErrorMessage("Failed to load sale details.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadSale();
-  }, [id]);
+  useEffect(() => { loadSale(); }, [id]);
 
-  const canVoidSale =
+  const canVoid =
     sale?.status === "ACTIVE" &&
     (currentUser?.role === "ADMIN" || currentUser?.role === "MANAGER");
 
-  const handleVoidSale = async () => {
-    if (!sale?._id) {
-      return;
-    }
-
-    if (!voidReason.trim()) {
-      setVoidMessage("Void reason is required.");
-      return;
-    }
-
+  const handleVoid = async () => {
+    if (!sale?._id) return;
+    if (!voidReason.trim()) { setVoidMsg("Void reason is required."); return; }
     try {
       setIsVoiding(true);
-      setVoidMessage("");
+      setVoidMsg("");
       await voidSale(sale._id, voidReason.trim());
       setVoidReason("");
-      setVoidMessage("Sale voided successfully.");
+      setVoidMsg("Sale voided successfully.");
+      setShowVoidPanel(false);
       await loadSale();
-    } catch (error: any) {
-      setVoidMessage(
-        error?.response?.data?.message ?? error?.message ?? "Failed to void sale."
-      );
+    } catch (err: any) {
+      setVoidMsg(err?.response?.data?.message ?? err?.message ?? "Failed to void sale.");
     } finally {
       setIsVoiding(false);
     }
@@ -84,238 +147,479 @@ export default function SaleDetailsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#1f8a43" />
-        <Text style={styles.helperText}>Loading sale details...</Text>
-      </View>
+      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.helperText}>Loading sale details…</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (errorMessage || !sale) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>
-          {errorMessage || "Sale details are unavailable."}
-        </Text>
-      </View>
+      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+        <View style={styles.centered}>
+          <MaterialCommunityIcons name="alert-circle-outline" size={48} color={colors.terracotta} />
+          <Text style={styles.errorText}>{errorMessage || "Sale unavailable."}</Text>
+          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+            <Text style={styles.backBtnText}>Go Back</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
     );
   }
 
+  const statusColors = saleStatusColors[sale.status];
+  const isVoid = sale.status === "VOID";
+  const firstItem = sale.items[0];
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Sale Details</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{sale.saleGroupId}</Text>
-        <Text style={styles.meta}>Status: {sale.status}</Text>
-        <Text style={styles.meta}>Total: Rs. {sale.grandTotal}</Text>
-        <Text style={styles.meta}>
-          Date: {new Date(sale.saleDateTime).toLocaleString()}
-        </Text>
-        <Text style={styles.meta}>Recorded By: {sale.recordedBy ?? "N/A"}</Text>
-        <Text style={styles.meta}>Your Role: {currentUser?.role ?? "N/A"}</Text>
-        <Text style={styles.meta}>Notes: {sale.notes ?? "N/A"}</Text>
-        <Text style={styles.meta}>
-          Customer: {sale.customerName ?? "N/A"}
-        </Text>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Items</Text>
-        {sale.items.map((item, itemIndex) => (
-          <View key={`${item.productId}-${itemIndex}`} style={styles.card}>
-            <Text style={styles.cardTitle}>{item.productNameSnapshot}</Text>
-            <Text style={styles.meta}>Quantity: {item.quantity}</Text>
-            <Text style={styles.meta}>Unit Price: Rs. {item.unitPriceSnapshot}</Text>
-            <Text style={styles.meta}>Line Total: Rs. {item.lineTotal}</Text>
-            <Text style={styles.meta}>
-              Discount Rate: {item.discountRateApplied}%
-            </Text>
-
-            <Text style={styles.subheading}>Allocations</Text>
-            {item.allocations.map((allocation, allocationIndex) => (
-              <View
-                key={`${allocation.batchId}-${allocationIndex}`}
-                style={styles.allocationBox}
-              >
-                <Text style={styles.meta}>Batch: {allocation.batchId}</Text>
-                <Text style={styles.meta}>
-                  Quantity Deducted: {allocation.qtyDeducted}
-                </Text>
-                <Text style={styles.meta}>
-                  Expiry: {new Date(allocation.expiryDateSnapshot).toLocaleDateString()}
-                </Text>
-              </View>
-            ))}
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Audit Information</Text>
-        <Text style={styles.meta}>Voided By: {sale.voidedBy ?? "N/A"}</Text>
-        <Text style={styles.meta}>
-          Voided At: {sale.voidedAt ? new Date(sale.voidedAt).toLocaleString() : "N/A"}
-        </Text>
-        <Text style={styles.meta}>Void Reason: {sale.voidReason ?? "N/A"}</Text>
-        <Text style={styles.meta}>Edited By: {sale.editedBy ?? "N/A"}</Text>
-        <Text style={styles.meta}>
-          Edited At: {sale.editedAt ? new Date(sale.editedAt).toLocaleString() : "N/A"}
-        </Text>
-        <Text style={styles.meta}>Edit Reason: {sale.editReason ?? "N/A"}</Text>
-      </View>
-
-      {canVoidSale ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Manager Void Action</Text>
-          <Text style={styles.meta}>
-            Only managers and admins can void an active sale.
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      {/* ── Top app bar ── */}
+      <View style={styles.appBar}>
+        <Pressable onPress={() => router.back()} style={styles.backIcon} hitSlop={8}>
+          <MaterialCommunityIcons name="arrow-left" size={22} color={colors.primary} />
+        </Pressable>
+        <Text style={styles.appBarTitle}>Sale Details</Text>
+        <View style={[styles.statusPill, { backgroundColor: statusColors.background }]}>
+          <Text style={[styles.statusPillText, { color: statusColors.text }]}>
+            {sale.status}
           </Text>
-          <TextInput
-            multiline
-            onChangeText={setVoidReason}
-            placeholder="Enter the reason for voiding this sale"
-            style={styles.input}
-            textAlignVertical="top"
-            value={voidReason}
-          />
-          {voidMessage ? (
-            <Text
-              style={
-                sale.status === "VOID" || voidMessage.includes("successfully")
-                  ? styles.successText
-                  : styles.errorText
-              }
-            >
-              {voidMessage}
-            </Text>
-          ) : null}
-          <Pressable
-            disabled={isVoiding}
-            onPress={handleVoidSale}
-            style={({ pressed }) => [
-              styles.voidButton,
-              pressed && styles.voidButtonPressed,
-              isVoiding && styles.voidButtonDisabled,
-            ]}
-          >
-            {isVoiding ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text style={styles.voidButtonText}>Void Sale</Text>
-            )}
-          </Pressable>
         </View>
-      ) : null}
-    </ScrollView>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Hero: first item image ── */}
+        <View style={styles.heroWrap}>
+
+          <View style={styles.heroBanner}>
+            <View style={styles.heroTextBlock}>
+              <Text style={styles.heroEyebrow}>SALES RECEIPT</Text>
+              <Text style={styles.heroTitle}>{sale.saleGroupId}</Text>
+              <Text style={styles.heroDate}>{formatDateTime(sale.saleDateTime)}</Text>
+            </View>
+            <View style={styles.heroMeta}>
+              <View style={styles.scoreCircle}>
+                <Text style={styles.scoreNum}>{sale.items.length}</Text>
+                <Text style={styles.scoreLabel}>Items</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Financial summary bento ── */}
+        <View style={styles.financialBento}>
+          <View style={styles.financialRow}>
+            <View style={styles.financialCard}>
+              <Text style={styles.financialLabel}>SUBTOTAL</Text>
+              <Text style={styles.financialValue}>Rs. {sale.subTotal.toFixed(2)}</Text>
+            </View>
+            <View style={[styles.financialCard, { backgroundColor: colors.secondaryContainer }]}>
+              <Text style={[styles.financialLabel, { color: colors.secondary }]}>DISCOUNT</Text>
+              <Text style={[styles.financialValue, { color: colors.secondary }]}>
+                −Rs. {sale.discountTotal.toFixed(2)}
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.financialCardWide, { backgroundColor: colors.primaryContainer }]}>
+            <Text style={[styles.financialLabel, { color: colors.onPrimaryContainer }]}>
+              GRAND TOTAL
+            </Text>
+            <Text style={[styles.financialValueLg, { color: colors.primary }]}>
+              Rs. {sale.grandTotal.toFixed(2)}
+            </Text>
+            {sale.amountGiven != null && (
+              <Text style={styles.changeText}>
+                Paid: Rs. {sale.amountGiven.toFixed(2)} · Change: Rs.{" "}
+                {(sale.changeGiven ?? 0).toFixed(2)}
+              </Text>
+            )}
+          </View>
+        </View>
+
+        {/* ── Items section ── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeading}>
+            <MaterialCommunityIcons name="package-variant" size={20} color={colors.primary} />
+            <Text style={styles.sectionTitle}>Items Sold</Text>
+          </View>
+          {sale.items.map((item, idx) => (
+            <SaleItemCard key={`${item.productId}-${idx}`} item={item} />
+          ))}
+        </View>
+
+        {/* ── Customer & notes ── */}
+        {(sale.customerName || sale.customerEmail || sale.notes) && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeading}>
+              <MaterialCommunityIcons name="account-outline" size={20} color={colors.primary} />
+              <Text style={styles.sectionTitle}>Customer Info</Text>
+            </View>
+            <View style={styles.infoCard}>
+              {sale.customerName && (
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoKey}>Name</Text>
+                  <Text style={styles.infoVal}>{sale.customerName}</Text>
+                </View>
+              )}
+              {sale.customerEmail && (
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoKey}>Email</Text>
+                  <Text style={styles.infoVal}>{sale.customerEmail}</Text>
+                </View>
+              )}
+              {sale.notes && (
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoKey}>Notes</Text>
+                  <Text style={styles.infoVal}>{sale.notes}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* ── Audit trail ── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeading}>
+            <MaterialCommunityIcons name="shield-check-outline" size={20} color={colors.primary} />
+            <Text style={styles.sectionTitle}>Audit Trail</Text>
+          </View>
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoKey}>Recorded By</Text>
+              <Text style={styles.infoVal}>{sale.recordedBy ?? "N/A"}</Text>
+            </View>
+            {isVoid && (
+              <>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoKey}>Voided By</Text>
+                  <Text style={[styles.infoVal, { color: colors.terracotta }]}>
+                    {sale.voidedBy ?? "N/A"}
+                  </Text>
+                </View>
+                {sale.voidedAt && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoKey}>Voided At</Text>
+                    <Text style={styles.infoVal}>{formatDateTime(sale.voidedAt)}</Text>
+                  </View>
+                )}
+                {sale.voidReason && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoKey}>Void Reason</Text>
+                    <Text style={[styles.infoVal, { fontStyle: "italic" }]}>
+                      {sale.voidReason}
+                    </Text>
+                  </View>
+                )}
+              </>
+            )}
+            {sale.editedBy && (
+              <>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoKey}>Edited By</Text>
+                  <Text style={styles.infoVal}>{sale.editedBy}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoKey}>Edit Reason</Text>
+                  <Text style={[styles.infoVal, { fontStyle: "italic" }]}>
+                    {sale.editReason ?? "—"}
+                  </Text>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+
+        {/* ── Void Action (managers/admins only) ── */}
+        {canVoid && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeading}>
+              <MaterialCommunityIcons name="cancel" size={20} color={colors.terracotta} />
+              <Text style={[styles.sectionTitle, { color: colors.terracotta }]}>
+                Manager Action
+              </Text>
+            </View>
+
+            {!showVoidPanel ? (
+              <Pressable
+                onPress={() => setShowVoidPanel(true)}
+                style={({ pressed }) => [
+                  styles.showVoidBtn,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <MaterialCommunityIcons name="delete-forever-outline" size={18} color={colors.terracotta} />
+                <Text style={styles.showVoidBtnText}>Void This Sale</Text>
+              </Pressable>
+            ) : (
+              <View style={styles.voidPanel}>
+                <Text style={styles.voidPanelInfo}>
+                  Voiding will restore all batch stock. This action cannot be undone.
+                </Text>
+                <TextInput
+                  multiline
+                  value={voidReason}
+                  onChangeText={setVoidReason}
+                  placeholder="Enter the reason for voiding this sale…"
+                  placeholderTextColor={colors.outline}
+                  style={styles.voidInput}
+                  textAlignVertical="top"
+                />
+                {voidMsg ? (
+                  <Text
+                    style={[
+                      styles.voidMsg,
+                      voidMsg.includes("successfully")
+                        ? { color: colors.success }
+                        : { color: colors.terracotta },
+                    ]}
+                  >
+                    {voidMsg}
+                  </Text>
+                ) : null}
+                <View style={styles.voidActions}>
+                  <Pressable
+                    onPress={() => { setShowVoidPanel(false); setVoidReason(""); setVoidMsg(""); }}
+                    style={styles.cancelBtn}
+                  >
+                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleVoid}
+                    disabled={isVoiding}
+                    style={({ pressed }) => [
+                      styles.voidConfirmBtn,
+                      pressed && { opacity: 0.85 },
+                      isVoiding && { opacity: 0.7 },
+                    ]}
+                  >
+                    {isVoiding ? (
+                      <ActivityIndicator color={colors.white} size="small" />
+                    ) : (
+                      <Text style={styles.voidConfirmBtnText}>Confirm Void</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
+// ── styles ────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f4f7f1",
-  },
-  content: {
-    padding: 20,
-    gap: 16,
-  },
-  centered: {
-    flex: 1,
-    backgroundColor: "#f4f7f1",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#122418",
-  },
-  section: {
-    backgroundColor: "#ffffff",
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#dbe4d8",
-    gap: 8,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#17311d",
-  },
-  card: {
-    borderTopWidth: 1,
-    borderTopColor: "#e8eee5",
-    paddingTop: 12,
-    gap: 4,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1d3321",
-  },
-  subheading: {
+  safe: { flex: 1, backgroundColor: colors.background },
+  centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 16 },
+  helperText: { fontSize: 15, color: colors.textMuted, marginTop: 8 },
+  errorText: { fontSize: 16, fontWeight: "600", color: colors.terracotta, textAlign: "center" },
+  backBtn: {
     marginTop: 8,
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#1f8a43",
-  },
-  allocationBox: {
-    backgroundColor: "#f8fbf6",
+    backgroundColor: colors.primaryContainer,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     borderRadius: 12,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#dbe4d8",
-    marginTop: 6,
   },
-  meta: {
-    fontSize: 14,
-    color: "#4f6152",
-  },
-  helperText: {
-    marginTop: 12,
-    fontSize: 15,
-    color: "#526052",
-  },
-  errorText: {
-    fontSize: 15,
-    color: "#ba1a1a",
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  input: {
-    minHeight: 96,
-    borderWidth: 1,
-    borderColor: "#d0dacd",
-    borderRadius: 14,
-    paddingHorizontal: 14,
+  backBtnText: { fontSize: 14, fontWeight: "700", color: colors.onPrimaryContainer },
+  appBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "#fbfdf9",
-    fontSize: 15,
+    gap: 12,
+    backgroundColor: colors.surface + "cc",
+    borderBottomWidth: 1,
+    borderBottomColor: colors.outlineVariant + "40",
   },
-  voidButton: {
-    backgroundColor: "#b3261e",
+  backIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceHigh,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  appBarTitle: { flex: 1, fontSize: 17, fontWeight: "700", color: colors.primary },
+  statusPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  statusPillText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase" },
+  scroll: { padding: 20, gap: 4 },
+  heroBanner: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    backgroundColor: colors.primaryFixed,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 4,
+    ...theme.shadows.card,
+  },
+  heroWrap: { gap: 12, marginBottom: 4 },
+  heroTextBlock: { gap: 4, flex: 1 },
+  heroEyebrow: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    color: colors.primary,
+  },
+  heroTitle: { fontSize: 22, fontWeight: "800", color: colors.text },
+  heroDate: { fontSize: 13, color: colors.textMuted },
+  heroMeta: { alignItems: "center" },
+  scoreCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: colors.primaryContainer,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scoreNum: { fontSize: 20, fontWeight: "800", color: colors.primary, lineHeight: 22 },
+  scoreLabel: { fontSize: 9, fontWeight: "700", color: colors.primary + "99", textTransform: "uppercase" },
+  financialBento: { gap: 10, marginTop: 4, marginBottom: 4 },
+  financialRow: { flexDirection: "row", gap: 10 },
+  financialCard: {
+    flex: 1,
+    backgroundColor: colors.surfaceHigh,
+    borderRadius: 14,
+    padding: 14,
+    gap: 4,
+    ...theme.shadows.card,
+  },
+  financialCardWide: {
+    borderRadius: 14,
+    padding: 16,
+    gap: 4,
+    ...theme.shadows.card,
+  },
+  financialLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    color: colors.textMuted,
+  },
+  financialValue: { fontSize: 18, fontWeight: "800", color: colors.text },
+  financialValueLg: { fontSize: 28, fontWeight: "800" },
+  changeText: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  section: { marginTop: 20, gap: 10 },
+  sectionHeading: { flexDirection: "row", alignItems: "center", gap: 8 },
+  sectionTitle: { fontSize: 17, fontWeight: "700", color: colors.text },
+  itemCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    padding: 14,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant + "50",
+    ...theme.shadows.card,
+  },
+  itemHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+  itemMeta: { flex: 1, gap: 2 },
+  itemName: { fontSize: 15, fontWeight: "700", color: colors.text },
+  itemSub: { fontSize: 13, color: colors.textMuted },
+  itemDiscount: { fontSize: 12, color: colors.secondary, fontWeight: "600" },
+  itemTotal: { fontSize: 15, fontWeight: "800", color: colors.primary },
+  allocations: {
+    backgroundColor: colors.surfaceLow,
+    borderRadius: 10,
+    padding: 10,
+    gap: 6,
+    borderTopWidth: 1,
+    borderTopColor: colors.outlineVariant + "40",
+  },
+  allocLabel: {
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    color: colors.textMuted,
+    marginBottom: 2,
+  },
+  allocRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  allocText: { flex: 1, fontSize: 12, color: colors.text, fontWeight: "600" },
+  allocExpiry: { fontSize: 11, color: colors.textMuted },
+  infoCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant + "50",
+    gap: 10,
+    ...theme.shadows.card,
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  infoKey: { fontSize: 13, fontWeight: "700", color: colors.textMuted, flex: 1 },
+  infoVal: { fontSize: 13, color: colors.text, flex: 2, textAlign: "right" },
+  showVoidBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 2,
+    borderColor: colors.terracotta,
     borderRadius: 14,
     paddingVertical: 14,
+    backgroundColor: "#fde9e4",
+  },
+  showVoidBtnText: { fontSize: 15, fontWeight: "700", color: colors.terracotta },
+  voidPanel: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.terracotta + "60",
+    ...theme.shadows.card,
+  },
+  voidPanelInfo: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
+  voidInput: {
+    minHeight: 80,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: colors.surfaceLow,
+    fontSize: 14,
+    color: colors.text,
+  },
+  voidMsg: { fontSize: 13, fontWeight: "600" },
+  voidActions: { flexDirection: "row", gap: 10 },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceHigh,
+    alignItems: "center",
+  },
+  cancelBtnText: { fontSize: 14, fontWeight: "700", color: colors.textMuted },
+  voidConfirmBtn: {
+    flex: 2,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: colors.terracotta,
     alignItems: "center",
     justifyContent: "center",
   },
-  voidButtonPressed: {
-    opacity: 0.85,
-  },
-  voidButtonDisabled: {
-    opacity: 0.7,
-  },
-  voidButtonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  successText: {
-    color: "#1f8a43",
-    fontSize: 14,
-    fontWeight: "700",
-  },
+  voidConfirmBtnText: { fontSize: 14, fontWeight: "700", color: colors.white },
 });
