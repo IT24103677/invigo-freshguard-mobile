@@ -22,8 +22,14 @@ interface UpdateSaleInput {
   editReason: string;
 }
 
-export const getSales = async () => {
-  const response = await apiClient.get<ApiResponse<Sale[]>>("/sales");
+interface GetSalesParams {
+  status?: "ACTIVE" | "VOID";
+  from?: string;
+  to?: string;
+}
+
+export const getSales = async (params?: GetSalesParams) => {
+  const response = await apiClient.get<ApiResponse<Sale[]>>("/sales", { params });
   return response.data.data;
 };
 

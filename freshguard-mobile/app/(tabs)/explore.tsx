@@ -23,6 +23,7 @@ import { Sale } from "@/src/types/sale";
 import { BrandMark } from "@/components/ui/brand-mark";
 
 type SalesFilter = "ALL" | "ACTIVE" | "VOID" | "TODAY";
+type DateRangeFilter = "ALL_TIME" | "TODAY" | "THIS_WEEK" | "THIS_MONTH";
 
 function formatRelativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -52,6 +53,37 @@ function isToday(dateStr: string): boolean {
     now.getMonth() === date.getMonth() &&
     now.getDate() === date.getDate()
   );
+}
+
+function getDateRangeParams(range: DateRangeFilter): {
+  from?: string;
+  to?: string;
+} {
+  if (range === "ALL_TIME") {
+    return {};
+  }
+
+  const now = new Date();
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+
+  if (range === "THIS_WEEK") {
+    const day = start.getDay();
+    const diff = day === 0 ? 6 : day - 1;
+    start.setDate(start.getDate() - diff);
+  }
+
+  if (range === "THIS_MONTH") {
+    start.setDate(1);
+  }
+
+  return {
+    from: start.toISOString(),
+    to: end.toISOString(),
+  };
 }
 
 interface SaleCardProps {
@@ -116,6 +148,8 @@ export default function SalesScreen() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<SalesFilter>("ALL");
+  const [selectedRange, setSelectedRange] =
+    useState<DateRangeFilter>("ALL_TIME");
 
   const loadSales = useCallback(async (isRefresh = false) => {
     try {
@@ -126,7 +160,7 @@ export default function SalesScreen() {
       }
 
       setErrorMsg("");
-      const data = await getSales();
+      const data = await getSales(getDateRangeParams(selectedRange));
       setSales(data);
     } catch {
       setErrorMsg("Failed to load sales.");
@@ -134,7 +168,7 @@ export default function SalesScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [selectedRange]);
 
   useFocusEffect(
     useCallback(() => {
@@ -260,6 +294,56 @@ export default function SalesScreen() {
           Search bills, filter transaction status, and review operational sales
           activity in one place.
         </Text>
+
+        <View style={styles.rangeHeader}>
+          <Text style={styles.rangeHeaderLabel}>Date Range</Text>
+          <Text style={styles.rangeHeaderValue}>
+            {selectedRange === "ALL_TIME"
+              ? "All recorded sales"
+              : selectedRange === "TODAY"
+              ? "Today only"
+              : selectedRange === "THIS_WEEK"
+              ? "This week"
+              : "This month"}
+          </Text>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.rangeRow}
+        >
+          {(
+            [
+              ["ALL_TIME", "All Time"],
+              ["TODAY", "Today"],
+              ["THIS_WEEK", "This Week"],
+              ["THIS_MONTH", "This Month"],
+            ] as [DateRangeFilter, string][]
+          ).map(([range, label]) => {
+            const isSelected = selectedRange === range;
+
+            return (
+              <Pressable
+                key={range}
+                onPress={() => setSelectedRange(range)}
+                style={[
+                  styles.rangeChip,
+                  isSelected && styles.rangeChipSelected,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.rangeChipText,
+                    isSelected && styles.rangeChipTextSelected,
+                  ]}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
 
         <View style={styles.searchBar}>
           <MaterialCommunityIcons
@@ -523,6 +607,49 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginBottom: 16,
     lineHeight: 20,
+  },
+  rangeHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 8,
+  },
+  rangeHeaderLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.primary,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  rangeHeaderValue: {
+    fontSize: 12,
+    color: colors.textMuted,
+    fontWeight: "600",
+  },
+  rangeRow: {
+    gap: 10,
+    paddingBottom: 12,
+  },
+  rangeChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: colors.primaryContainer + "40",
+    borderWidth: 1,
+    borderColor: colors.primaryContainer,
+  },
+  rangeChipSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  rangeChipText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  rangeChipTextSelected: {
+    color: colors.white,
   },
   searchBar: {
     flexDirection: "row",
