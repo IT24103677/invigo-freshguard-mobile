@@ -119,6 +119,7 @@ export function CartItem({
 
           <Text style={styles.lineTotal}>Rs. {lineTotal.toFixed(2)}</Text>
         </View>
+
       </View>
     </View>
   );

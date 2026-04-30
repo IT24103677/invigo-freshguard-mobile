@@ -123,7 +123,8 @@ function formatCategoryLabel(category: string) {
 
 export default function PosScreen() {
   const { setIsAuthenticated } = useAuthSession();
-  const { cart, addProduct, incrementProduct, decrementProduct } = usePosCart();
+  const { cart, addProduct, incrementProduct, decrementProduct, clearCart } =
+    usePosCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -236,6 +237,21 @@ export default function PosScreen() {
         },
       },
     ]);
+  };
+
+  const handleClearCurrentBill = () => {
+    Alert.alert(
+      "Clear Current Bill",
+      "Do you want to remove all currently selected products before checkout?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear Bill",
+          style: "destructive",
+          onPress: () => clearCart(),
+        },
+      ]
+    );
   };
 
   return (
@@ -653,29 +669,56 @@ export default function PosScreen() {
           })
         )}
 
-        <View style={{ height: cart.length > 0 ? 110 : 24 }} />
+        <View style={{ height: cart.length > 0 ? 164 : 24 }} />
       </ScrollView>
 
       {cart.length > 0 && (
-        <Pressable
-          onPress={() => router.push("/checkout")}
-          style={({ pressed }) => [
-            styles.checkoutBar,
-            pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
-          ]}
-        >
-          <View style={styles.checkoutLeft}>
-            <MaterialCommunityIcons
-              name="cart-outline"
-              size={18}
-              color={colors.white}
-            />
-            <Text style={styles.checkoutText}>
-              Checkout ({totalCartUnits} {totalCartUnits === 1 ? "unit" : "units"})
-            </Text>
+        <View style={styles.checkoutDock}>
+          <View style={styles.billToolsCard}>
+            <View style={styles.billToolsTextWrap}>
+              <Text style={styles.billToolsTitle}>Current Bill</Text>
+              <Text style={styles.billToolsMeta}>
+                {cart.length} {cart.length === 1 ? "product" : "products"} selected
+                {" · "}
+                {totalCartUnits} {totalCartUnits === 1 ? "unit" : "units"}
+              </Text>
+            </View>
+            <Pressable
+              onPress={handleClearCurrentBill}
+              style={({ pressed }) => [
+                styles.clearBillBtn,
+                pressed && { opacity: 0.85 },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="trash-can-outline"
+                size={16}
+                color={colors.terracotta}
+              />
+              <Text style={styles.clearBillBtnText}>Clear Bill</Text>
+            </Pressable>
           </View>
-          <Text style={styles.checkoutTotal}>Rs. {grandTotal.toFixed(2)}</Text>
-        </Pressable>
+
+          <Pressable
+            onPress={() => router.push("/checkout")}
+            style={({ pressed }) => [
+              styles.checkoutBar,
+              pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+            ]}
+          >
+            <View style={styles.checkoutLeft}>
+              <MaterialCommunityIcons
+                name="cart-outline"
+                size={18}
+                color={colors.white}
+              />
+              <Text style={styles.checkoutText}>
+                Checkout ({totalCartUnits} {totalCartUnits === 1 ? "unit" : "units"})
+              </Text>
+            </View>
+            <Text style={styles.checkoutTotal}>Rs. {grandTotal.toFixed(2)}</Text>
+          </Pressable>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -990,11 +1033,57 @@ const styles = StyleSheet.create({
     color: colors.terracotta,
     fontWeight: "700",
   },
-  checkoutBar: {
+  checkoutDock: {
     position: "absolute",
     left: 20,
     right: 20,
     bottom: 20,
+    gap: 10,
+  },
+  billToolsCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant + "80",
+    ...theme.shadows.card,
+  },
+  billToolsTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  billToolsTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  billToolsMeta: {
+    fontSize: 12,
+    color: colors.textMuted,
+    fontWeight: "600",
+  },
+  clearBillBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: colors.terracottaSoft + "55",
+    borderWidth: 1,
+    borderColor: colors.terracottaSoft,
+  },
+  clearBillBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.terracotta,
+  },
+  checkoutBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
