@@ -34,6 +34,10 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function normalizeCustomerName(name: string) {
+  return name.trim().replace(/\s+/g, " ");
+}
+
 type CartStockIssue = {
   productId: string;
   productName: string;
@@ -127,6 +131,7 @@ export default function CheckoutScreen() {
   );
   const grandTotal = +(cartSubTotal - cartDiscount).toFixed(2);
   const totalCartUnits = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const normalizedCustomerName = normalizeCustomerName(customerName);
   const trimmedCustomerEmail = customerEmail.trim();
   const parsedAmountGiven = amountGiven.trim() ? parseFloat(amountGiven) : null;
   const previewChange =
@@ -355,7 +360,7 @@ export default function CheckoutScreen() {
 
       const sale = await createSale({
         clientRequestKey,
-        customerName: customerName.trim() || undefined,
+        customerName: normalizedCustomerName || undefined,
         customerEmail: trimmedCustomerEmail || undefined,
         notes: notes.trim() || undefined,
         amountGiven: parsedAmount,
@@ -622,6 +627,13 @@ export default function CheckoutScreen() {
                     onChangeText={setCustomerName}
                   />
                 </View>
+                <Text style={styles.fieldHintText}>
+                  {customerName.trim().length === 0
+                    ? "Add a customer name only when you need it on the receipt."
+                    : normalizedCustomerName === customerName
+                    ? "Customer name looks clean."
+                    : `Will be saved as "${normalizedCustomerName}".`}
+                </Text>
                 <View style={styles.field}>
                   <MaterialCommunityIcons
                     name="email-outline"

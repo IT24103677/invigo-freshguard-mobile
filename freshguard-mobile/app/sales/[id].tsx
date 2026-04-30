@@ -61,6 +61,10 @@ function formatAuditUser(user: string | SaleAuditUser | null | undefined) {
   return `${user.name} (${user.role})`;
 }
 
+function normalizeCustomerName(name: string) {
+  return name.trim().replace(/\s+/g, " ");
+}
+
 function buildReceiptShareText(sale: Sale) {
   const itemLines = sale.items
     .map(
@@ -234,6 +238,7 @@ export default function SaleDetailsScreen() {
   const canVoid =
     sale?.status === "ACTIVE" &&
     (currentUser?.role === "ADMIN" || currentUser?.role === "MANAGER");
+  const normalizedCustomerNameInput = normalizeCustomerName(customerNameInput);
 
   const resetEditPanel = () => {
     setShowEditPanel(false);
@@ -256,7 +261,7 @@ export default function SaleDetailsScreen() {
       setIsSavingEdit(true);
       setEditMsg("");
       await updateSale(sale._id, {
-        customerName: customerNameInput.trim() || undefined,
+        customerName: normalizedCustomerNameInput || undefined,
         customerEmail: customerEmailInput.trim() || undefined,
         notes: notesInput.trim() || undefined,
         editReason: editReasonInput.trim(),
@@ -796,6 +801,13 @@ export default function SaleDetailsScreen() {
                   placeholderTextColor={colors.outline}
                   style={styles.editInput}
                 />
+                <Text style={styles.editHintText}>
+                  {customerNameInput.trim().length === 0
+                    ? "Customer name will stay empty unless you enter one."
+                    : normalizedCustomerNameInput === customerNameInput
+                    ? "Customer name looks clean."
+                    : `Will be saved as "${normalizedCustomerNameInput}".`}
+                </Text>
 
                 <TextInput
                   value={customerEmailInput}
@@ -1362,6 +1374,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceLow,
     fontSize: 14,
     color: colors.text,
+  },
+  editHintText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.textMuted,
+    marginTop: -4,
   },
   editNotesInput: {
     minHeight: 80,
