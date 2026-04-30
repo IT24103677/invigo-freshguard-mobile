@@ -68,6 +68,16 @@ export default function CheckoutScreen() {
     parsedAmountGiven != null && !Number.isNaN(parsedAmountGiven)
       ? +(parsedAmountGiven - grandTotal).toFixed(2)
       : null;
+  const isAmountMissing = amountGiven.trim().length === 0;
+  const isAmountInvalid =
+    !isAmountMissing &&
+    (Number.isNaN(parsedAmountGiven ?? Number.NaN) || (parsedAmountGiven ?? 0) < 0);
+  const isAmountInsufficient =
+    !isAmountMissing &&
+    !isAmountInvalid &&
+    (parsedAmountGiven ?? 0) < grandTotal;
+  const canSubmitSale =
+    cart.length > 0 && !submitting && !isAmountMissing && !isAmountInvalid && !isAmountInsufficient;
 
   const resetCheckoutState = () => {
     clearCart();
@@ -412,6 +422,21 @@ export default function CheckoutScreen() {
                     onChangeText={setAmountGiven}
                   />
                 </View>
+                <Text
+                  style={[
+                    styles.fieldHintText,
+                    (isAmountInvalid || isAmountInsufficient) &&
+                      styles.fieldHintErrorText,
+                  ]}
+                >
+                  {isAmountMissing
+                    ? "Enter the cash amount received to enable checkout."
+                    : isAmountInvalid
+                    ? "Amount given must be a valid non-negative number."
+                    : isAmountInsufficient
+                    ? "Amount given must cover the grand total."
+                    : `Payment looks valid. Change to return: Rs. ${(previewChange ?? 0).toFixed(2)}`}
+                </Text>
                 <View style={styles.field}>
                   <MaterialCommunityIcons
                     name="note-text-outline"
@@ -475,11 +500,11 @@ export default function CheckoutScreen() {
 
               <Pressable
                 onPress={handleRecordSale}
-                disabled={submitting || cart.length === 0}
+                disabled={!canSubmitSale}
                 style={({ pressed }) => [
                   styles.recordBtn,
                   pressed && { opacity: 0.85 },
-                  (submitting || cart.length === 0) && { opacity: 0.7 },
+                  !canSubmitSale && { opacity: 0.7 },
                 ]}
               >
                 {submitting ? (
@@ -731,6 +756,15 @@ const styles = StyleSheet.create({
     height: 44,
   },
   input: { flex: 1, fontSize: 14, color: colors.text },
+  fieldHintText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.textMuted,
+    marginTop: -2,
+  },
+  fieldHintErrorText: {
+    color: colors.terracotta,
+  },
   errorText: {
     fontSize: 13,
     fontWeight: "600",
