@@ -28,11 +28,34 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { CartItem, CartLineItem } from "@/components/ui/cart-item";
 import { BrandMark } from "@/components/ui/brand-mark";
 
-const FILTER_CHIPS = ["ALL", "DAIRY", "PRODUCE", "BAKERY", "BEVERAGES", "MEAT", "FROZEN", "SNACKS"];
+const FILTER_CHIPS = [
+  "ALL",
+  "DAIRY",
+  "PRODUCE",
+  "BAKERY",
+  "BEVERAGES",
+  "MEAT",
+  "FROZEN",
+  "SNACKS",
+];
 
-function getProductStatus(product: Product): "critical" | "urgent" | "fresh" | "watchlist" {
-  // Simple heuristic based on stock — in a real app, we'd use batch expiry data
+function getProductStatus(
+  product: Product
+): "critical" | "urgent" | "fresh" | "watchlist" {
+  void product;
   return "fresh";
+}
+
+function buildCartItem(product: Product): CartLineItem {
+  return {
+    productId: product._id,
+    productName: product.name,
+    category: product.category,
+    imageUrl: product.imageUrl,
+    unitPrice: product.sellingPrice,
+    quantity: 1,
+    discountRate: 0,
+  };
 }
 
 export default function PosScreen() {
@@ -75,74 +98,111 @@ export default function PosScreen() {
     }).start();
   }, [cartSlide, showCart]);
 
-  const filtered = products.filter((p) => {
+  const filtered = products.filter((product) => {
     const matchSearch =
       search.trim() === "" ||
-      p.name.toLowerCase().includes(search.toLowerCase());
+      product.name.toLowerCase().includes(search.toLowerCase());
     const matchFilter =
-      activeFilter === "ALL" ||
-      p.category.toUpperCase() === activeFilter;
-    return matchSearch && matchFilter && p.isActive;
+      activeFilter === "ALL" || product.category.toUpperCase() === activeFilter;
+
+    return matchSearch && matchFilter && product.isActive;
   });
 
   const addToCart = (product: Product) => {
     const shouldOpenCart = cart.length === 0;
 
     setCart((prev) => {
-      const existing = prev.find((i) => i.productId === product._id);
+      const existing = prev.find((item) => item.productId === product._id);
+
       if (existing) {
-        return prev.map((i) =>
-          i.productId === product._id
-            ? { ...i, quantity: i.quantity + 1 }
-            : i
+        return prev.map((item) =>
+          item.productId === product._id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
         );
       }
-      return [
-        ...prev,
-        {
-          productId: product._id,
-          productName: product.name,
-          category: product.category,
-          imageUrl: product.imageUrl,
-          unitPrice: product.sellingPrice,
-          quantity: 1,
-          discountRate: 0,
-        },
-      ];
+
+      return [...prev, buildCartItem(product)];
     });
+
     if (shouldOpenCart) {
       setShowCart(true);
     }
+
     setErrorMsg("");
+  };
+
+  const incrementFromList = (product: Product) => {
+    setCart((prev) => {
+      const existing = prev.find((item) => item.productId === product._id);
+
+      if (existing) {
+        return prev.map((item) =>
+          item.productId === product._id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+
+      return [...prev, buildCartItem(product)];
+    });
+
+    setErrorMsg("");
+  };
+
+  const decrementFromList = (productId: string) => {
+    setCart((prev) => {
+      const existing = prev.find((item) => item.productId === productId);
+
+      if (!existing) return prev;
+
+      if (existing.quantity <= 1) {
+        const next = prev.filter((item) => item.productId !== productId);
+        if (next.length === 0) setShowCart(false);
+        return next;
+      }
+
+      return prev.map((item) =>
+        item.productId === productId
+          ? { ...item, quantity: item.quantity - 1 }
+          : item
+      );
+    });
   };
 
   const updateQty = (productId: string, delta: number) => {
     setCart((prev) =>
-      prev.map((i) =>
-        i.productId === productId
-          ? { ...i, quantity: Math.max(1, i.quantity + delta) }
-          : i
+      prev.map((item) =>
+        item.productId === productId
+          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
+          : item
       )
     );
   };
 
   const updateDiscount = (productId: string, rate: number) => {
     setCart((prev) =>
-      prev.map((i) => (i.productId === productId ? { ...i, discountRate: rate } : i))
+      prev.map((item) =>
+        item.productId === productId ? { ...item, discountRate: rate } : item
+      )
     );
   };
 
   const removeFromCart = (productId: string) => {
     setCart((prev) => {
-      const next = prev.filter((i) => i.productId !== productId);
+      const next = prev.filter((item) => item.productId !== productId);
       if (next.length === 0) setShowCart(false);
       return next;
     });
   };
 
-  const cartSubTotal = cart.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  const cartSubTotal = cart.reduce(
+    (sum, item) => sum + item.quantity * item.unitPrice,
+    0
+  );
   const cartDiscount = cart.reduce(
-    (sum, i) => sum + i.quantity * i.unitPrice * (i.discountRate / 100),
+    (sum, item) =>
+      sum + item.quantity * item.unitPrice * (item.discountRate / 100),
     0
   );
   const grandTotal = +(cartSubTotal - cartDiscount).toFixed(2);
@@ -168,37 +228,48 @@ export default function PosScreen() {
       setErrorMsg("Add at least one product to the cart.");
       return;
     }
+
     const parsedAmount = parseFloat(amountGiven);
-    if (amountGiven.trim() && (isNaN(parsedAmount) || parsedAmount < 0)) {
+
+    if (amountGiven.trim() && (Number.isNaN(parsedAmount) || parsedAmount < 0)) {
       setErrorMsg("Amount given must be a valid number.");
       return;
     }
+
     if (amountGiven.trim() && parsedAmount < grandTotal) {
       setErrorMsg("Amount given cannot be less than the grand total.");
       return;
     }
+
     try {
       setSubmitting(true);
       setErrorMsg("");
+
       const sale = await createSale({
         customerName: customerName.trim() || undefined,
         customerEmail: customerEmail.trim() || undefined,
         notes: notes.trim() || undefined,
         amountGiven: amountGiven.trim() ? parsedAmount : undefined,
-        items: cart.map((i) => ({
-          productId: i.productId,
-          quantity: i.quantity,
-          discountRateApplied: i.discountRate,
+        items: cart.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          discountRateApplied: item.discountRate,
         })),
       });
+
       Alert.alert(
-        "Sale Recorded ✓",
-        `${sale.saleGroupId}\nTotal: Rs. ${sale.grandTotal}\nChange: Rs. ${sale.changeGiven ?? 0}`,
+        "Sale Recorded",
+        `${sale.saleGroupId}\nTotal: Rs. ${sale.grandTotal}\nChange: Rs. ${
+          sale.changeGiven ?? 0
+        }`,
         [{ text: "OK" }]
       );
+
       clearCart();
     } catch (err: any) {
-      setErrorMsg(err?.response?.data?.message ?? err?.message ?? "Failed to record sale.");
+      setErrorMsg(
+        err?.response?.data?.message ?? err?.message ?? "Failed to record sale."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -230,7 +301,7 @@ export default function PosScreen() {
   });
 
   const totalItems = products.length;
-  const criticalCount = 0; // placeholder — real data comes from batch expiry
+  const criticalCount = 0;
 
   return (
     <KeyboardAvoidingView
@@ -238,7 +309,6 @@ export default function PosScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <SafeAreaView style={styles.safe} edges={["top"]}>
-        {/* ── Header ── */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <BrandMark size={24} />
@@ -273,7 +343,6 @@ export default function PosScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* ── Search bar ── */}
           <View style={styles.searchWrap}>
             <MaterialCommunityIcons
               name="magnify"
@@ -290,7 +359,6 @@ export default function PosScreen() {
             />
           </View>
 
-          {/* ── Filter chips ── */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -317,40 +385,73 @@ export default function PosScreen() {
             ))}
           </ScrollView>
 
-          {/* ── Summary bento ── */}
           <View style={styles.bento}>
-            <View style={[styles.bentoCard, { backgroundColor: colors.primaryContainer }]}>
-              <Text style={[styles.bentoLabel, { color: colors.onPrimaryContainer }]}>
+            <View
+              style={[
+                styles.bentoCard,
+                { backgroundColor: colors.primaryContainer },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.bentoLabel,
+                  { color: colors.onPrimaryContainer },
+                ]}
+              >
                 TOTAL ITEMS
               </Text>
-              <Text style={[styles.bentoValue, { color: colors.onPrimaryContainer }]}>
-                {loading ? "—" : totalItems.toLocaleString()}
+              <Text
+                style={[
+                  styles.bentoValue,
+                  { color: colors.onPrimaryContainer },
+                ]}
+              >
+                {loading ? "-" : totalItems.toLocaleString()}
               </Text>
             </View>
-            <View style={[styles.bentoCard, { backgroundColor: colors.tertiaryContainer }]}>
-              <Text style={[styles.bentoLabel, { color: colors.onTertiaryContainer }]}>
+
+            <View
+              style={[
+                styles.bentoCard,
+                { backgroundColor: colors.tertiaryContainer },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.bentoLabel,
+                  { color: colors.onTertiaryContainer },
+                ]}
+              >
                 CRITICAL
               </Text>
-              <Text style={[styles.bentoValue, { color: colors.onTertiaryContainer }]}>
-                {loading ? "—" : criticalCount}
+              <Text
+                style={[
+                  styles.bentoValue,
+                  { color: colors.onTertiaryContainer },
+                ]}
+              >
+                {loading ? "-" : criticalCount}
               </Text>
             </View>
           </View>
 
-          {/* ── Product list ── */}
           <Text style={styles.sectionTitle}>Active Inventory</Text>
 
           {loading ? (
             <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
           ) : filtered.length === 0 ? (
             <View style={styles.empty}>
-              <MaterialCommunityIcons name="package-variant" size={48} color={colors.outline} />
+              <MaterialCommunityIcons
+                name="package-variant"
+                size={48}
+                color={colors.outline}
+              />
               <Text style={styles.emptyText}>No products found.</Text>
             </View>
           ) : (
             filtered.map((product) => {
               const status = getProductStatus(product);
-              const inCart = cart.find((c) => c.productId === product._id);
+              const inCart = cart.find((item) => item.productId === product._id);
               const accentColor =
                 status === "critical"
                   ? colors.terracotta
@@ -377,6 +478,7 @@ export default function PosScreen() {
                     size={64}
                     borderRadius={12}
                   />
+
                   <View style={styles.productBody}>
                     <View style={styles.productRow}>
                       <Text style={styles.productName} numberOfLines={1}>
@@ -384,21 +486,48 @@ export default function PosScreen() {
                       </Text>
                       <StatusBadge variant={status} />
                     </View>
+
                     <Text style={styles.productCategory}>
                       Category: {product.category}
                     </Text>
+
                     <View style={styles.productFooter}>
                       <Text style={styles.productPrice}>
                         Rs. {product.sellingPrice.toFixed(2)}
                       </Text>
+
                       {inCart ? (
-                        <View style={styles.inCartBadge}>
-                          <MaterialCommunityIcons
-                            name="cart-check"
-                            size={14}
-                            color={colors.primary}
-                          />
-                          <Text style={styles.inCartText}>×{inCart.quantity}</Text>
+                        <View style={styles.productControlWrap}>
+                          <Text style={styles.inBillText}>In bill</Text>
+                          <View style={styles.qtyStepper}>
+                            <Pressable
+                              onPress={() => decrementFromList(product._id)}
+                              hitSlop={8}
+                              style={styles.qtyStepperBtn}
+                            >
+                              <MaterialCommunityIcons
+                                name="minus"
+                                size={14}
+                                color={colors.primary}
+                              />
+                            </Pressable>
+
+                            <Text style={styles.qtyStepperValue}>
+                              {inCart.quantity}
+                            </Text>
+
+                            <Pressable
+                              onPress={() => incrementFromList(product)}
+                              hitSlop={8}
+                              style={styles.qtyStepperBtn}
+                            >
+                              <MaterialCommunityIcons
+                                name="plus"
+                                size={14}
+                                color={colors.primary}
+                              />
+                            </Pressable>
+                          </View>
                         </View>
                       ) : (
                         <View style={styles.addHint}>
@@ -417,7 +546,6 @@ export default function PosScreen() {
             })
           )}
 
-          {/* spacer for cart panel */}
           {showCart && <View style={{ height: 340 }} />}
         </ScrollView>
 
@@ -436,20 +564,26 @@ export default function PosScreen() {
                 color={colors.white}
               />
               <Text style={styles.peekCartText}>
-                View Cart ({totalCartUnits} {totalCartUnits === 1 ? "unit" : "units"})
+                View Cart ({totalCartUnits}{" "}
+                {totalCartUnits === 1 ? "unit" : "units"})
               </Text>
             </View>
             <Text style={styles.peekCartTotal}>Rs. {grandTotal.toFixed(2)}</Text>
           </Pressable>
         )}
 
-        {/* ── Cart panel (slide up) ── */}
         {cart.length > 0 && (
           <Animated.View
-            style={[styles.cartPanel, { transform: [{ translateY: cartTranslateY }] }]}
+            style={[
+              styles.cartPanel,
+              { transform: [{ translateY: cartTranslateY }] },
+            ]}
           >
             <View style={styles.cartHeader}>
-              <Pressable onPress={() => setShowCart((v) => !v)} style={styles.cartToggle}>
+              <Pressable
+                onPress={() => setShowCart((value) => !value)}
+                style={styles.cartToggle}
+              >
                 <MaterialCommunityIcons
                   name={showCart ? "chevron-down" : "chevron-up"}
                   size={20}
@@ -529,6 +663,7 @@ export default function PosScreen() {
                       onChangeText={setCustomerName}
                     />
                   </View>
+
                   <View style={styles.paymentField}>
                     <MaterialCommunityIcons
                       name="email-outline"
@@ -547,7 +682,7 @@ export default function PosScreen() {
                   </View>
                 </View>
 
-                <Text style={styles.checkoutSectionTitle}>Payment & Notes</Text>
+                <Text style={styles.checkoutSectionTitle}>Payment and Notes</Text>
                 <View style={styles.checkoutStack}>
                   <View style={styles.paymentField}>
                     <MaterialCommunityIcons
@@ -564,6 +699,7 @@ export default function PosScreen() {
                       onChangeText={setAmountGiven}
                     />
                   </View>
+
                   <View style={styles.paymentField}>
                     <MaterialCommunityIcons
                       name="note-text-outline"
@@ -592,8 +728,11 @@ export default function PosScreen() {
                       size={16}
                       color={colors.primary}
                     />
-                    <Text style={styles.continueAddingText}>Continue Adding</Text>
+                    <Text style={styles.continueAddingText}>
+                      Continue Adding
+                    </Text>
                   </Pressable>
+
                   <Pressable onPress={clearCart} style={styles.clearCartBtn}>
                     <MaterialCommunityIcons
                       name="trash-can-outline"
@@ -617,9 +756,13 @@ export default function PosScreen() {
                     <ActivityIndicator color={colors.white} />
                   ) : (
                     <>
-                      <MaterialCommunityIcons name="receipt" size={18} color={colors.white} />
+                      <MaterialCommunityIcons
+                        name="receipt"
+                        size={18}
+                        color={colors.white}
+                      />
                       <Text style={styles.createBtnText}>
-                        Record Sale — Rs. {grandTotal.toFixed(2)}
+                        Record Sale - Rs. {grandTotal.toFixed(2)}
                       </Text>
                     </>
                   )}
@@ -659,12 +802,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.terracottaSoft,
   },
-  logoutButtonPressed: {
-    opacity: 0.85,
-  },
-  logoutButtonDisabled: {
-    opacity: 0.7,
-  },
+  logoutButtonPressed: { opacity: 0.85 },
+  logoutButtonDisabled: { opacity: 0.7 },
   logoutText: {
     fontSize: 13,
     fontWeight: "700",
@@ -708,7 +847,12 @@ const styles = StyleSheet.create({
     gap: 4,
     ...theme.shadows.card,
   },
-  bentoLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase" },
+  bentoLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
   bentoValue: { fontSize: 26, fontWeight: "700" },
   sectionTitle: {
     fontSize: 20,
@@ -737,8 +881,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
   },
-  productName: { flex: 1, fontSize: 16, fontWeight: "700", color: colors.text, marginRight: 6 },
-  productCategory: { fontSize: 11, fontWeight: "700", letterSpacing: 0.4, color: colors.outline, textTransform: "uppercase" },
+  productName: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.text,
+    marginRight: 6,
+  },
+  productCategory: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+    color: colors.outline,
+    textTransform: "uppercase",
+  },
   productFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -746,16 +902,41 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   productPrice: { fontSize: 14, fontWeight: "700", color: colors.primary },
-  inCartBadge: {
+  productControlWrap: {
+    alignItems: "flex-end",
+    gap: 4,
+  },
+  inBillText: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    color: colors.primary,
+  },
+  qtyStepper: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 2,
     backgroundColor: colors.primaryContainer + "60",
-    paddingHorizontal: 8,
+    borderRadius: 10,
+    paddingHorizontal: 4,
     paddingVertical: 3,
-    borderRadius: 8,
   },
-  inCartText: { fontSize: 12, fontWeight: "700", color: colors.primary },
+  qtyStepperBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+  },
+  qtyStepperValue: {
+    minWidth: 22,
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "800",
+    color: colors.primary,
+  },
   addHint: { flexDirection: "row", alignItems: "center", gap: 4 },
   addHintText: { fontSize: 12, color: colors.textMuted },
   peekCartBtn: {
@@ -788,7 +969,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: colors.white,
   },
-  // Cart panel
   cartPanel: {
     position: "absolute",
     bottom: 0,
@@ -844,9 +1024,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.text,
   },
-  summaryValueError: {
-    color: colors.terracotta,
-  },
+  summaryValueError: { color: colors.terracotta },
   summaryDivider: {
     height: 1,
     backgroundColor: colors.outlineVariant + "70",
@@ -870,9 +1048,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 10,
   },
-  checkoutStack: {
-    gap: 12,
-  },
+  checkoutStack: { gap: 12 },
   paymentField: {
     flexDirection: "row",
     alignItems: "center",
