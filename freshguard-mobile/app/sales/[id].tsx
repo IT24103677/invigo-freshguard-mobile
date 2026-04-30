@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,9 +13,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 
 import { getCurrentUser } from "@/src/api/auth";
-import { getSaleById, updateSale, voidSale } from "@/src/api/sales";
+import {
+  getSaleById,
+  updateSale,
+  uploadSaleReceipt,
+  voidSale,
+} from "@/src/api/sales";
 import { colors, saleStatusColors } from "@/src/theme/colors";
 import { theme } from "@/src/theme";
 import { AuthUser } from "@/src/types/auth";
@@ -115,6 +122,8 @@ export default function SaleDetailsScreen() {
   const [voidMsg, setVoidMsg] = useState("");
   const [isVoiding, setIsVoiding] = useState(false);
   const [showVoidPanel, setShowVoidPanel] = useState(false);
+  const [receiptMsg, setReceiptMsg] = useState("");
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
 
   const loadSale = useCallback(async () => {
     if (!id) {
@@ -213,6 +222,89 @@ export default function SaleDetailsScreen() {
       );
     } finally {
       setIsVoiding(false);
+    }
+  };
+
+  const handleAttachReceipt = () => {
+    if (!sale?._id || isUploadingReceipt) return;
+
+    Alert.alert(
+      sale.receiptImageUrl ? "Replace Receipt" : "Attach Receipt",
+      "Choose how you want to add the receipt image.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Camera",
+          onPress: async () => {
+            const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+            if (!permission.granted) {
+              setReceiptMsg(
+                "Camera permission is required to capture a receipt."
+              );
+              return;
+            }
+
+            const result = await ImagePicker.launchCameraAsync({
+              mediaTypes: ["images"],
+              allowsEditing: true,
+              quality: 0.7,
+            });
+
+            if (!result.canceled) {
+              await handleUploadReceipt(result.assets[0]);
+            }
+          },
+        },
+        {
+          text: "Gallery",
+          onPress: async () => {
+            const permission =
+              await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+            if (!permission.granted) {
+              setReceiptMsg(
+                "Media library permission is required to attach a receipt."
+              );
+              return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ["images"],
+              allowsEditing: true,
+              quality: 0.7,
+            });
+
+            if (!result.canceled) {
+              await handleUploadReceipt(result.assets[0]);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleUploadReceipt = async (asset: ImagePicker.ImagePickerAsset) => {
+    if (!sale?._id) return;
+
+    try {
+      setIsUploadingReceipt(true);
+      setReceiptMsg("");
+      await uploadSaleReceipt(sale._id, asset);
+      setReceiptMsg(
+        sale.receiptImageUrl
+          ? "Receipt replaced successfully."
+          : "Receipt attached successfully."
+      );
+      await loadSale();
+    } catch (err: any) {
+      setReceiptMsg(
+        err?.response?.data?.message ??
+          err?.message ??
+          "Failed to upload receipt."
+      );
+    } finally {
+      setIsUploadingReceipt(false);
     }
   };
 
@@ -408,17 +500,18 @@ export default function SaleDetailsScreen() {
           </View>
         )}
 
-        {sale.receiptImageUrl && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeading}>
-              <MaterialCommunityIcons
-                name="receipt-text"
-                size={20}
-                color={colors.primary}
-              />
-              <Text style={styles.sectionTitle}>Receipt Attachment</Text>
-            </View>
-            <View style={styles.receiptCard}>
+        <View style={styles.section}>
+          <View style={styles.sectionHeading}>
+            <MaterialCommunityIcons
+              name="receipt-text"
+              size={20}
+              color={colors.primary}
+            />
+            <Text style={styles.sectionTitle}>Receipt Attachment</Text>
+          </View>
+          <View style={styles.receiptCard}>
+            {sale.receiptImageUrl ? (
+              <>
               <Image
                 source={{ uri: sale.receiptImageUrl }}
                 style={styles.receiptImage}
@@ -427,9 +520,63 @@ export default function SaleDetailsScreen() {
               <Text style={styles.receiptCaption}>
                 Receipt image attached to this sale.
               </Text>
-            </View>
+              </>
+            ) : (
+              <View style={styles.receiptEmptyState}>
+                <MaterialCommunityIcons
+                  name="receipt-text-plus-outline"
+                  size={32}
+                  color={colors.outline}
+                />
+                <Text style={styles.receiptCaption}>
+                  No receipt image is attached to this sale yet.
+                </Text>
+              </View>
+            )}
+
+            {receiptMsg ? (
+              <Text
+                style={[
+                  styles.receiptMsg,
+                  receiptMsg.includes("successfully")
+                    ? { color: colors.success }
+                    : { color: colors.terracotta },
+                ]}
+              >
+                {receiptMsg}
+              </Text>
+            ) : null}
+
+            <Pressable
+              onPress={handleAttachReceipt}
+              disabled={isUploadingReceipt}
+              style={({ pressed }) => [
+                styles.receiptActionBtn,
+                pressed && { opacity: 0.85 },
+                isUploadingReceipt && { opacity: 0.7 },
+              ]}
+            >
+              {isUploadingReceipt ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <>
+                  <MaterialCommunityIcons
+                    name={
+                      sale.receiptImageUrl
+                        ? "image-edit-outline"
+                        : "receipt-text-plus-outline"
+                    }
+                    size={18}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.receiptActionBtnText}>
+                    {sale.receiptImageUrl ? "Replace Receipt" : "Attach Receipt"}
+                  </Text>
+                </>
+              )}
+            </Pressable>
           </View>
-        )}
+        </View>
 
         {canEdit && (
           <View style={styles.section}>
@@ -911,6 +1058,35 @@ const styles = StyleSheet.create({
   receiptCaption: {
     fontSize: 13,
     color: colors.textMuted,
+  },
+  receiptEmptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 18,
+    backgroundColor: colors.surfaceLow,
+    borderRadius: 12,
+  },
+  receiptMsg: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  receiptActionBtn: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.primaryContainer + "55",
+    borderWidth: 1,
+    borderColor: colors.primaryContainer,
+  },
+  receiptActionBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primary,
   },
   infoRow: {
     flexDirection: "row",
