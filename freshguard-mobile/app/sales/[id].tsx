@@ -91,6 +91,7 @@ function buildReceiptShareText(sale: Sale) {
 }
 
 function SaleItemCard({ item }: { item: SaleItem }) {
+  const [showAllocations, setShowAllocations] = useState(false);
   const discountAmount =
     item.quantity * item.unitPriceSnapshot * (item.discountRateApplied / 100);
 
@@ -121,26 +122,47 @@ function SaleItemCard({ item }: { item: SaleItem }) {
 
       {item.allocations.length > 0 && (
         <View style={styles.allocations}>
-          <Text style={styles.allocLabel}>BATCH ALLOCATIONS</Text>
-          {item.allocations.map((allocation, index) => (
-            <View
-              key={`${allocation.batchId}-${index}`}
-              style={styles.allocRow}
-            >
-              <MaterialCommunityIcons
-                name="cube-outline"
-                size={14}
-                color={colors.primary}
-              />
-              <Text style={styles.allocText}>
-                {String(allocation.batchId).slice(-8).toUpperCase()} -{" "}
-                {allocation.qtyDeducted} units
-              </Text>
-              <Text style={styles.allocExpiry}>
-                Exp: {formatDate(allocation.expiryDateSnapshot)}
+          <Pressable
+            onPress={() => setShowAllocations((current) => !current)}
+            style={({ pressed }) => [
+              styles.allocToggle,
+              pressed && { opacity: 0.86 },
+            ]}
+          >
+            <View style={styles.allocToggleLeft}>
+              <Text style={styles.allocLabel}>BATCH ALLOCATIONS</Text>
+              <Text style={styles.allocSummary}>
+                {item.allocations.length}{" "}
+                {item.allocations.length === 1 ? "batch" : "batches"} used
               </Text>
             </View>
-          ))}
+            <MaterialCommunityIcons
+              name={showAllocations ? "chevron-up" : "chevron-down"}
+              size={18}
+              color={colors.primary}
+            />
+          </Pressable>
+
+          {showAllocations &&
+            item.allocations.map((allocation, index) => (
+              <View
+                key={`${allocation.batchId}-${index}`}
+                style={styles.allocRow}
+              >
+                <MaterialCommunityIcons
+                  name="cube-outline"
+                  size={14}
+                  color={colors.primary}
+                />
+                <Text style={styles.allocText}>
+                  {String(allocation.batchId).slice(-8).toUpperCase()} -{" "}
+                  {allocation.qtyDeducted} units
+                </Text>
+                <Text style={styles.allocExpiry}>
+                  Exp: {formatDate(allocation.expiryDateSnapshot)}
+                </Text>
+              </View>
+            ))}
         </View>
       )}
     </View>
@@ -1108,13 +1130,27 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.outlineVariant + "40",
   },
+  allocToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  allocToggleLeft: {
+    flex: 1,
+    gap: 2,
+  },
   allocLabel: {
     fontSize: 9,
     fontWeight: "700",
     letterSpacing: 0.8,
     textTransform: "uppercase",
     color: colors.textMuted,
-    marginBottom: 2,
+  },
+  allocSummary: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.primary,
   },
   allocRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   allocText: { flex: 1, fontSize: 12, color: colors.text, fontWeight: "600" },
