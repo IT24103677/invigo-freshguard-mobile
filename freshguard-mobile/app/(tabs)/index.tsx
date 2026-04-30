@@ -44,6 +44,8 @@ export default function PosScreen() {
   const [cart, setCart] = useState<CartLineItem[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [amountGiven, setAmountGiven] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -140,6 +142,21 @@ export default function PosScreen() {
     0
   );
   const grandTotal = +(cartSubTotal - cartDiscount).toFixed(2);
+  const parsedAmountGiven = amountGiven.trim() ? parseFloat(amountGiven) : null;
+  const previewChange =
+    parsedAmountGiven != null && !Number.isNaN(parsedAmountGiven)
+      ? +(parsedAmountGiven - grandTotal).toFixed(2)
+      : null;
+
+  const clearCart = () => {
+    setCart([]);
+    setShowCart(false);
+    setAmountGiven("");
+    setCustomerName("");
+    setCustomerEmail("");
+    setNotes("");
+    setErrorMsg("");
+  };
 
   const handleCreateSale = async () => {
     if (cart.length === 0) {
@@ -159,6 +176,8 @@ export default function PosScreen() {
       setSubmitting(true);
       setErrorMsg("");
       const sale = await createSale({
+        customerName: customerName.trim() || undefined,
+        customerEmail: customerEmail.trim() || undefined,
         notes: notes.trim() || undefined,
         amountGiven: amountGiven.trim() ? parsedAmount : undefined,
         items: cart.map((i) => ({
@@ -172,10 +191,7 @@ export default function PosScreen() {
         `${sale.saleGroupId}\nTotal: Rs. ${sale.grandTotal}\nChange: Rs. ${sale.changeGiven ?? 0}`,
         [{ text: "OK" }]
       );
-      setCart([]);
-      setShowCart(false);
-      setAmountGiven("");
-      setNotes("");
+      clearCart();
     } catch (err: any) {
       setErrorMsg(err?.response?.data?.message ?? err?.message ?? "Failed to record sale.");
     } finally {
@@ -435,10 +451,83 @@ export default function PosScreen() {
                   />
                 ))}
 
-                {/* Payment row */}
-                <View style={styles.paymentRow}>
+                <View style={styles.summaryCard}>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Subtotal</Text>
+                    <Text style={styles.summaryValue}>
+                      Rs. {cartSubTotal.toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Discount</Text>
+                    <Text style={styles.summaryValue}>
+                      -Rs. {cartDiscount.toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={styles.summaryDivider} />
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryGrandLabel}>Grand Total</Text>
+                    <Text style={styles.summaryGrandValue}>
+                      Rs. {grandTotal.toFixed(2)}
+                    </Text>
+                  </View>
+                  {previewChange != null && !Number.isNaN(previewChange) ? (
+                    <View style={styles.summaryRow}>
+                      <Text style={styles.summaryLabel}>Change Preview</Text>
+                      <Text
+                        style={[
+                          styles.summaryValue,
+                          previewChange < 0 && styles.summaryValueError,
+                        ]}
+                      >
+                        Rs. {previewChange.toFixed(2)}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                <Text style={styles.checkoutSectionTitle}>Customer Details</Text>
+                <View style={styles.checkoutStack}>
                   <View style={styles.paymentField}>
-                    <MaterialCommunityIcons name="cash" size={16} color={colors.primary} />
+                    <MaterialCommunityIcons
+                      name="account-outline"
+                      size={16}
+                      color={colors.primary}
+                    />
+                    <TextInput
+                      style={styles.paymentInput}
+                      placeholder="Customer name (optional)"
+                      placeholderTextColor={colors.outline}
+                      value={customerName}
+                      onChangeText={setCustomerName}
+                    />
+                  </View>
+                  <View style={styles.paymentField}>
+                    <MaterialCommunityIcons
+                      name="email-outline"
+                      size={16}
+                      color={colors.primary}
+                    />
+                    <TextInput
+                      style={styles.paymentInput}
+                      placeholder="Customer email (optional)"
+                      placeholderTextColor={colors.outline}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                      value={customerEmail}
+                      onChangeText={setCustomerEmail}
+                    />
+                  </View>
+                </View>
+
+                <Text style={styles.checkoutSectionTitle}>Payment & Notes</Text>
+                <View style={styles.checkoutStack}>
+                  <View style={styles.paymentField}>
+                    <MaterialCommunityIcons
+                      name="cash"
+                      size={16}
+                      color={colors.primary}
+                    />
                     <TextInput
                       style={styles.paymentInput}
                       placeholder="Amount given"
@@ -449,7 +538,11 @@ export default function PosScreen() {
                     />
                   </View>
                   <View style={styles.paymentField}>
-                    <MaterialCommunityIcons name="note-text-outline" size={16} color={colors.textMuted} />
+                    <MaterialCommunityIcons
+                      name="note-text-outline"
+                      size={16}
+                      color={colors.textMuted}
+                    />
                     <TextInput
                       style={styles.paymentInput}
                       placeholder="Notes (optional)"
@@ -461,6 +554,17 @@ export default function PosScreen() {
                 </View>
 
                 {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
+
+                <View style={styles.cartActionsRow}>
+                  <Pressable onPress={clearCart} style={styles.clearCartBtn}>
+                    <MaterialCommunityIcons
+                      name="trash-can-outline"
+                      size={16}
+                      color={colors.terracotta}
+                    />
+                    <Text style={styles.clearCartText}>Clear Cart</Text>
+                  </Pressable>
+                </View>
 
                 <Pressable
                   onPress={handleCreateSale}
@@ -647,9 +751,61 @@ const styles = StyleSheet.create({
   cartTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
   grandTotalLabel: { fontSize: 18, fontWeight: "800", color: colors.primary },
   cartItems: { padding: 16, gap: 10 },
-  paymentRow: { flexDirection: "row", gap: 12, marginTop: 8 },
+  summaryCard: {
+    backgroundColor: colors.surfaceLow,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    padding: 14,
+    gap: 8,
+    marginTop: 8,
+  },
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  summaryLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.textMuted,
+  },
+  summaryValue: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  summaryValueError: {
+    color: colors.terracotta,
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: colors.outlineVariant + "70",
+    marginVertical: 2,
+  },
+  summaryGrandLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  summaryGrandValue: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: colors.primary,
+  },
+  checkoutSectionTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    color: colors.textMuted,
+    marginTop: 10,
+  },
+  checkoutStack: {
+    gap: 12,
+  },
   paymentField: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -661,6 +817,27 @@ const styles = StyleSheet.create({
     height: 44,
   },
   paymentInput: { flex: 1, fontSize: 14, color: colors.text },
+  cartActionsRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 6,
+  },
+  clearCartBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: colors.terracottaSoft + "55",
+    borderWidth: 1,
+    borderColor: colors.terracottaSoft,
+  },
+  clearCartText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.terracotta,
+  },
   errorText: {
     fontSize: 13,
     fontWeight: "600",
