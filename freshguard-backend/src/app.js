@@ -4,6 +4,7 @@ const morgan = require("morgan");
 
 const authRoutes = require("./routes/authRoutes");
 const batchRoutes = require("./routes/batchRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
 const productRoutes = require("./routes/productRoutes");
 const saleRoutes = require("./routes/saleRoutes");
 
@@ -21,6 +22,7 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/auth", authRoutes);
+app.use("/dashboard", dashboardRoutes);
 app.use("/products", productRoutes);
 app.use("/batches", batchRoutes);
 app.use("/sales", saleRoutes);
