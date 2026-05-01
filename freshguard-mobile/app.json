@@ -46,8 +46,8 @@
       "reactCompiler": true
     },
     "extra": {
-      "apiBaseUrlWeb": "http://localhost:5000",
-      "apiBaseUrlNative": "http://10.164.210.177:5000"
+      "apiBaseUrlWeb": "https://invigo-freshguard-mobile-production-f6e0.up.railway.app",
+      "apiBaseUrlNative": "https://invigo-freshguard-mobile-production-f6e0.up.railway.app"
     }
   }
 }
