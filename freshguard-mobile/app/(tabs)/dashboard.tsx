@@ -276,7 +276,19 @@ export default function DashboardScreen() {
               </ScrollView>
 
               <View style={styles.metricsGrid}>
-                <View style={[styles.metricCard, styles.metricCardPrimary]}>
+                <Pressable
+                  onPress={() =>
+                    openSalesWithPreset({
+                      range: selectedRange,
+                      status: "ACTIVE",
+                    })
+                  }
+                  style={({ pressed }) => [
+                    styles.metricCard,
+                    styles.metricCardPrimary,
+                    pressed && styles.metricCardPressed,
+                  ]}
+                >
                   <Text style={styles.metricLabel}>
                     {getRangeLabel(selectedRange)} Revenue
                   </Text>
@@ -288,9 +300,20 @@ export default function DashboardScreen() {
                       ? "Based on completed ACTIVE sales in this range."
                       : "No active revenue has been generated in this range yet."}
                   </Text>
-                </View>
+                </Pressable>
 
-                <View style={styles.metricCard}>
+                <Pressable
+                  onPress={() =>
+                    openSalesWithPreset({
+                      range: selectedRange,
+                      status: "ACTIVE",
+                    })
+                  }
+                  style={({ pressed }) => [
+                    styles.metricCard,
+                    pressed && styles.metricCardPressed,
+                  ]}
+                >
                   <Text style={styles.metricLabel}>
                     {getRangeLabel(selectedRange)} Bills
                   </Text>
@@ -302,9 +325,20 @@ export default function DashboardScreen() {
                       ? "Bills recorded and still counted as ACTIVE."
                       : "No ACTIVE bills have been recorded for this range."}
                   </Text>
-                </View>
+                </Pressable>
 
-                <View style={styles.metricCard}>
+                <Pressable
+                  onPress={() =>
+                    openSalesWithPreset({
+                      range: selectedRange,
+                      status: "ACTIVE",
+                    })
+                  }
+                  style={({ pressed }) => [
+                    styles.metricCard,
+                    pressed && styles.metricCardPressed,
+                  ]}
+                >
                   <Text style={styles.metricLabel}>
                     {getRangeLabel(selectedRange)} Units Sold
                   </Text>
@@ -316,9 +350,21 @@ export default function DashboardScreen() {
                       ? "Units moved through the sales flow in this range."
                       : "Units sold will appear here once a sale is recorded."}
                   </Text>
-                </View>
+                </Pressable>
 
-                <View style={[styles.metricCard, styles.metricCardAlert]}>
+                <Pressable
+                  onPress={() =>
+                    openSalesWithPreset({
+                      range: selectedRange,
+                      status: "VOID",
+                    })
+                  }
+                  style={({ pressed }) => [
+                    styles.metricCard,
+                    styles.metricCardAlert,
+                    pressed && styles.metricCardPressed,
+                  ]}
+                >
                   <Text style={[styles.metricLabel, styles.metricLabelAlert]}>
                     Voided Sales
                   </Text>
@@ -330,7 +376,7 @@ export default function DashboardScreen() {
                       ? "These remain visible for audit but are excluded from revenue."
                       : "No voided sales were found in the selected period."}
                   </Text>
-                </View>
+                </Pressable>
               </View>
 
               {!hasActiveSales ? (
@@ -671,6 +717,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.outlineVariant + "60",
     justifyContent: "space-between",
+  },
+  metricCardPressed: {
+    opacity: 0.88,
   },
   metricCardPrimary: {
     backgroundColor: colors.primaryFixed,
