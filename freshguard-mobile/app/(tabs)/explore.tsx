@@ -223,6 +223,7 @@ export default function SalesScreen() {
     useState<RoleFilter>("ALL_ROLES");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showSnapshot, setShowSnapshot] = useState(false);
+  const [showVoidedHighlights, setShowVoidedHighlights] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMoreSales, setHasMoreSales] = useState(false);
 
@@ -647,59 +648,76 @@ export default function SalesScreen() {
 
         {voidSales.length > 0 && (
           <View style={styles.section}>
-            <View style={styles.sectionHeading}>
+            <Pressable
+              onPress={() => setShowVoidedHighlights((current) => !current)}
+              style={({ pressed }) => [
+                styles.voidedToggle,
+                pressed && { opacity: 0.88 },
+              ]}
+            >
+              <View style={styles.voidedToggleLeft}>
+                <MaterialCommunityIcons
+                  name="alert-octagon"
+                  size={20}
+                  color={colors.terracotta}
+                />
+                <View style={styles.voidedToggleTextWrap}>
+                  <Text style={styles.voidedToggleTitle}>Matching Voided Sales</Text>
+                  <Text style={styles.voidedToggleSubtext}>
+                    {voidSales.length} {voidSales.length === 1 ? "sale" : "sales"} currently match this view
+                  </Text>
+                </View>
+              </View>
               <MaterialCommunityIcons
-                name="alert-octagon"
-                size={22}
+                name={showVoidedHighlights ? "chevron-up" : "chevron-down"}
+                size={20}
                 color={colors.terracotta}
               />
-              <Text style={[styles.sectionTitle, { color: colors.terracotta }]}>
-                Matching Voided Sales
-              </Text>
-            </View>
+            </Pressable>
 
-            {voidSales.slice(0, 3).map((sale) => (
-              <Pressable
-                key={sale._id}
-                onPress={() => router.push(`/sales/${sale._id}`)}
-                style={({ pressed }) => [
-                  styles.actionCard,
-                  styles.actionCardRed,
-                  pressed && { opacity: 0.88 },
-                ]}
-              >
-                <View style={styles.actionCardIcon}>
-                  <MaterialCommunityIcons
-                    name="receipt-text-remove"
-                    size={22}
-                    color={colors.terracotta}
-                  />
-                </View>
-
-                <View style={styles.actionCardBody}>
-                  <Text style={styles.actionCardTitle}>{sale.saleGroupId}</Text>
-                  <View style={styles.actionCardMeta}>
+            {showVoidedHighlights &&
+              voidSales.slice(0, 3).map((sale) => (
+                <Pressable
+                  key={sale._id}
+                  onPress={() => router.push(`/sales/${sale._id}`)}
+                  style={({ pressed }) => [
+                    styles.actionCard,
+                    styles.actionCardRed,
+                    pressed && { opacity: 0.88 },
+                  ]}
+                >
+                  <View style={styles.actionCardIcon}>
                     <MaterialCommunityIcons
-                      name="clock-remove-outline"
-                      size={14}
+                      name="receipt-text-remove"
+                      size={22}
                       color={colors.terracotta}
                     />
-                    <Text style={styles.actionCardMetaText}>
-                      Voided {formatRelativeTime(sale.voidedAt ?? sale.updatedAt)}
-                    </Text>
                   </View>
-                  {sale.voidReason ? (
-                    <Text style={styles.actionCardReason} numberOfLines={1}>
-                      &quot;{sale.voidReason}&quot;
-                    </Text>
-                  ) : null}
-                </View>
 
-                <View style={styles.actionBtn}>
-                  <Text style={styles.actionBtnText}>DETAILS</Text>
-                </View>
-              </Pressable>
-            ))}
+                  <View style={styles.actionCardBody}>
+                    <Text style={styles.actionCardTitle}>{sale.saleGroupId}</Text>
+                    <View style={styles.actionCardMeta}>
+                      <MaterialCommunityIcons
+                        name="clock-remove-outline"
+                        size={14}
+                        color={colors.terracotta}
+                      />
+                      <Text style={styles.actionCardMetaText}>
+                        Voided {formatRelativeTime(sale.voidedAt ?? sale.updatedAt)}
+                      </Text>
+                    </View>
+                    {sale.voidReason ? (
+                      <Text style={styles.actionCardReason} numberOfLines={1}>
+                        &quot;{sale.voidReason}&quot;
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.actionBtn}>
+                    <Text style={styles.actionBtnText}>DETAILS</Text>
+                  </View>
+                </Pressable>
+              ))}
           </View>
         )}
 
@@ -1083,6 +1101,38 @@ const styles = StyleSheet.create({
     gap: 4,
     marginBottom: 8,
     ...theme.shadows.card,
+  },
+  voidedToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.terracottaSoft,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    ...theme.shadows.card,
+  },
+  voidedToggleLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+  },
+  voidedToggleTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  voidedToggleTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.terracotta,
+  },
+  voidedToggleSubtext: {
+    fontSize: 12,
+    color: colors.textMuted,
   },
   snapshotToggle: {
     flexDirection: "row",
