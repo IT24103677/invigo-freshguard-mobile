@@ -27,10 +27,18 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#EBEFE3"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-image-picker"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "98086640-2e80-466a-9ff6-a99283f749b5"
+      }
+    }
   }
 }
