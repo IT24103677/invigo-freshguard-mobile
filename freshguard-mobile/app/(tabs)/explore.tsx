@@ -332,37 +332,50 @@ export default function SalesScreen() {
     const trimmedQuery = searchQuery.trim().toLowerCase();
     const salesUsersById = new Map(salesUsers.map((user) => [user.id, user]));
 
-    return sales.filter((sale) => {
-      const matchesFilter =
-        selectedFilter === "ALL" ||
-        (selectedFilter === "ACTIVE" && sale.status === "ACTIVE") ||
-        (selectedFilter === "VOID" && sale.status === "VOID");
+    return sales
+      .filter((sale) => {
+        const matchesFilter =
+          selectedFilter === "ALL" ||
+          (selectedFilter === "ACTIVE" && sale.status === "ACTIVE") ||
+          (selectedFilter === "VOID" && sale.status === "VOID");
 
-      if (!matchesFilter) return false;
+        if (!matchesFilter) return false;
 
-      if (selectedRoleFilter !== "ALL_ROLES") {
-        const recordedByUser = sale.recordedBy
-          ? salesUsersById.get(sale.recordedBy)
-          : null;
+        if (selectedRoleFilter !== "ALL_ROLES") {
+          const recordedByUser = sale.recordedBy
+            ? salesUsersById.get(sale.recordedBy)
+            : null;
 
-        if (!recordedByUser || recordedByUser.role !== selectedRoleFilter) {
-          return false;
+          if (!recordedByUser || recordedByUser.role !== selectedRoleFilter) {
+            return false;
+          }
         }
-      }
 
-      if (!trimmedQuery) return true;
+        if (!trimmedQuery) return true;
 
-      const matchesProductName = sale.items.some((item) =>
-        item.productNameSnapshot.toLowerCase().includes(trimmedQuery)
-      );
+        const matchesProductName = sale.items.some((item) =>
+          item.productNameSnapshot.toLowerCase().includes(trimmedQuery)
+        );
 
-      return (
-        sale.saleGroupId.toLowerCase().includes(trimmedQuery) ||
-        (sale.customerName ?? "").toLowerCase().includes(trimmedQuery) ||
-        (sale.customerEmail ?? "").toLowerCase().includes(trimmedQuery) ||
-        matchesProductName
-      );
-    });
+        return (
+          sale.saleGroupId.toLowerCase().includes(trimmedQuery) ||
+          (sale.customerName ?? "").toLowerCase().includes(trimmedQuery) ||
+          (sale.customerEmail ?? "").toLowerCase().includes(trimmedQuery) ||
+          matchesProductName
+        );
+      })
+      .sort((left, right) => {
+        const leftTime = new Date(
+          left.status === "VOID" ? left.voidedAt ?? left.updatedAt : left.saleDateTime
+        ).getTime();
+        const rightTime = new Date(
+          right.status === "VOID"
+            ? right.voidedAt ?? right.updatedAt
+            : right.saleDateTime
+        ).getTime();
+
+        return rightTime - leftTime;
+      });
   }, [sales, salesUsers, searchQuery, selectedFilter, selectedRoleFilter]);
 
   const voidSales = filteredSales.filter((sale) => sale.status === "VOID");
