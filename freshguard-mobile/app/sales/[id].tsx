@@ -372,15 +372,15 @@ export default function SaleDetailsScreen() {
       await uploadSaleReceipt(sale._id, asset);
       setReceiptMsg(
         sale.receiptImageUrl
-          ? "Receipt replaced successfully."
-          : "Receipt attached successfully."
+          ? "Receipt updated for this sale."
+          : "Receipt saved to this sale."
       );
       await loadSale();
     } catch (err: any) {
       setReceiptMsg(
         err?.response?.data?.message ??
           err?.message ??
-          "Failed to upload receipt."
+          "Receipt upload could not be completed. Please try again."
       );
     } finally {
       setIsUploadingReceipt(false);

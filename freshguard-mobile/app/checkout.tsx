@@ -383,12 +383,12 @@ export default function CheckoutScreen() {
       }
 
       Alert.alert(
-        receiptUploadFailed ? "Sale Recorded (Receipt Pending)" : "Sale Recorded",
+        receiptUploadFailed ? "Sale Recorded - Receipt Pending" : "Sale Recorded",
         `${sale.saleGroupId}\nTotal: Rs. ${sale.grandTotal}\nChange: Rs. ${
           sale.changeGiven ?? 0
         }${
           receiptUploadFailed
-            ? "\nReceipt upload failed. You can retry later from the sale details flow."
+            ? "\nReceipt upload could not be completed just now. Open Sale Details to retry it."
             : ""
         }`,
         [
@@ -728,7 +728,9 @@ export default function CheckoutScreen() {
               <Text style={styles.checkoutSectionTitle}>Receipt Attachment</Text>
               <View style={styles.receiptCard}>
                 <Text style={styles.receiptText}>
-                  Optionally attach a receipt photo from the camera or gallery.
+                  {receiptAsset
+                    ? "Receipt image selected. It will upload after this sale is recorded."
+                    : "Optionally attach a receipt photo from the camera or gallery."}
                 </Text>
                 <View style={styles.receiptActions}>
                   <Pressable
@@ -762,7 +764,7 @@ export default function CheckoutScreen() {
                       contentFit="cover"
                     />
                     <Text style={styles.receiptPreviewLabel}>
-                      Receipt ready to upload
+                      Receipt selected for upload
                     </Text>
                   </View>
                 ) : null}
