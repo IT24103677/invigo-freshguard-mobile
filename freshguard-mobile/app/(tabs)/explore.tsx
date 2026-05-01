@@ -222,6 +222,7 @@ export default function SalesScreen() {
   const [selectedRoleFilter, setSelectedRoleFilter] =
     useState<RoleFilter>("ALL_ROLES");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [showSnapshot, setShowSnapshot] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMoreSales, setHasMoreSales] = useState(false);
 
@@ -644,43 +645,6 @@ export default function SalesScreen() {
 
         {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeading}>
-            <MaterialCommunityIcons
-              name="chart-donut"
-              size={22}
-              color={colors.primary}
-            />
-            <Text style={[styles.sectionTitle, { color: colors.primary }]}>
-              Current Snapshot
-            </Text>
-          </View>
-
-          <View style={styles.statsGrid}>
-            <View style={[styles.statCard, { backgroundColor: colors.primaryContainer }]}>
-              <Text style={styles.statValue}>{todaysActiveSales.length}</Text>
-              <Text style={styles.statLabel}>Active Bills Today</Text>
-            </View>
-
-            <View style={[styles.statCard, { backgroundColor: "#fde9e4" }]}>
-              <Text style={[styles.statValue, { color: colors.terracotta }]}>
-                {urgentCount}
-              </Text>
-              <Text style={styles.statLabel}>Voided Sales</Text>
-            </View>
-
-            <View style={[styles.statCardWide, { backgroundColor: colors.secondaryContainer }]}>
-              <Text style={[styles.statValueWide, { color: colors.secondary }]}>
-                Rs.{" "}
-                {todaysActiveSales
-                  .reduce((sum, sale) => sum + sale.grandTotal, 0)
-                  .toFixed(2)}
-              </Text>
-              <Text style={styles.statLabel}>Today&apos;s Revenue</Text>
-            </View>
-          </View>
-        </View>
-
         {voidSales.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeading}>
@@ -750,6 +714,71 @@ export default function SalesScreen() {
               Filtered Sales
             </Text>
           </View>
+
+          <Pressable
+            onPress={() => setShowSnapshot((current) => !current)}
+            style={({ pressed }) => [
+              styles.snapshotToggle,
+              pressed && { opacity: 0.88 },
+            ]}
+          >
+            <View style={styles.snapshotToggleLeft}>
+              <MaterialCommunityIcons
+                name="chart-donut"
+                size={18}
+                color={colors.primary}
+              />
+              <View style={styles.snapshotToggleTextWrap}>
+                <Text style={styles.snapshotToggleTitle}>Sales Snapshot</Text>
+                <Text style={styles.snapshotToggleSubtext}>
+                  Today&apos;s active bills, voids, and revenue
+                </Text>
+              </View>
+            </View>
+            <MaterialCommunityIcons
+              name={showSnapshot ? "chevron-up" : "chevron-down"}
+              size={20}
+              color={colors.primary}
+            />
+          </Pressable>
+
+          {showSnapshot ? (
+            <View style={styles.statsGrid}>
+              <View
+                style={[
+                  styles.statCard,
+                  { backgroundColor: colors.primaryContainer },
+                ]}
+              >
+                <Text style={styles.statValue}>{todaysActiveSales.length}</Text>
+                <Text style={styles.statLabel}>Active Bills Today</Text>
+              </View>
+
+              <View style={[styles.statCard, { backgroundColor: "#fde9e4" }]}>
+                <Text style={[styles.statValue, { color: colors.terracotta }]}>
+                  {urgentCount}
+                </Text>
+                <Text style={styles.statLabel}>Voided Sales</Text>
+              </View>
+
+              <View
+                style={[
+                  styles.statCardWide,
+                  { backgroundColor: colors.secondaryContainer },
+                ]}
+              >
+                <Text
+                  style={[styles.statValueWide, { color: colors.secondary }]}
+                >
+                  Rs.{" "}
+                  {todaysActiveSales
+                    .reduce((sum, sale) => sum + sale.grandTotal, 0)
+                    .toFixed(2)}
+                </Text>
+                <Text style={styles.statLabel}>Today&apos;s Revenue</Text>
+              </View>
+            </View>
+          ) : null}
 
           {filteredSales.length === 0 ? (
             <View style={styles.emptySection}>
@@ -1054,6 +1083,38 @@ const styles = StyleSheet.create({
     gap: 4,
     marginBottom: 8,
     ...theme.shadows.card,
+  },
+  snapshotToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant + "60",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    ...theme.shadows.card,
+  },
+  snapshotToggleLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+  },
+  snapshotToggleTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  snapshotToggleTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  snapshotToggleSubtext: {
+    fontSize: 12,
+    color: colors.textMuted,
   },
   clearFiltersBtn: {
     marginTop: 6,
