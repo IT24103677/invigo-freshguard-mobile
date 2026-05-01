@@ -622,7 +622,12 @@ export default function SaleDetailsScreen() {
               size={20}
               color={colors.primary}
             />
-            <Text style={styles.sectionTitle}>Items Sold</Text>
+            <View style={styles.sectionTitleWrap}>
+              <Text style={styles.sectionTitle}>Items Sold</Text>
+              <Text style={styles.sectionSubtitle}>
+                Receipt line items with FEFO batch allocations when expanded.
+              </Text>
+            </View>
           </View>
           {sale.items.map((item, idx) => (
             <SaleItemCard key={`${item.productId}-${idx}`} item={item} />
@@ -637,7 +642,12 @@ export default function SaleDetailsScreen() {
                 size={20}
                 color={colors.primary}
               />
-              <Text style={styles.sectionTitle}>Customer Info</Text>
+              <View style={styles.sectionTitleWrap}>
+                <Text style={styles.sectionTitle}>Customer Info</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Contact details and notes saved with this bill.
+                </Text>
+              </View>
             </View>
             <View style={styles.infoCard}>
               {sale.customerName && (
@@ -685,7 +695,12 @@ export default function SaleDetailsScreen() {
               size={20}
               color={colors.primary}
             />
-            <Text style={styles.sectionTitle}>Receipt Attachment</Text>
+            <View style={styles.sectionTitleWrap}>
+              <Text style={styles.sectionTitle}>Receipt Attachment</Text>
+              <Text style={styles.sectionSubtitle}>
+                Photo proof for this sale, with retry or replace actions.
+              </Text>
+            </View>
           </View>
           <View style={styles.receiptCard}>
             {sale.receiptImageUrl ? (
@@ -764,7 +779,12 @@ export default function SaleDetailsScreen() {
                 size={20}
                 color={colors.primary}
               />
-              <Text style={styles.sectionTitle}>Edit Sale</Text>
+              <View style={styles.sectionTitleWrap}>
+                <Text style={styles.sectionTitle}>Edit Sale</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Update customer details or notes without changing stock movement.
+                </Text>
+              </View>
             </View>
 
             {!showEditPanel ? (
@@ -884,7 +904,12 @@ export default function SaleDetailsScreen() {
               size={20}
               color={colors.primary}
             />
-            <Text style={styles.sectionTitle}>Audit Trail</Text>
+            <View style={styles.sectionTitleWrap}>
+              <Text style={styles.sectionTitle}>Audit Trail</Text>
+              <Text style={styles.sectionSubtitle}>
+                Who recorded, edited, or voided this transaction.
+              </Text>
+            </View>
           </View>
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
@@ -952,11 +977,16 @@ export default function SaleDetailsScreen() {
                 size={20}
                 color={colors.terracotta}
               />
-              <Text
-                style={[styles.sectionTitle, { color: colors.terracotta }]}
-              >
-                Manager Action
-              </Text>
+              <View style={styles.sectionTitleWrap}>
+                <Text
+                  style={[styles.sectionTitle, { color: colors.terracotta }]}
+                >
+                  Manager Action
+                </Text>
+                <Text style={styles.sectionSubtitle}>
+                  Restricted destructive action that restores stock and preserves audit history.
+                </Text>
+              </View>
             </View>
 
             {!showVoidPanel ? (
@@ -1198,8 +1228,14 @@ const styles = StyleSheet.create({
   financialValueLg: { fontSize: 28, fontWeight: "800" },
   changeText: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
   section: { marginTop: 20, gap: 10 },
-  sectionHeading: { flexDirection: "row", alignItems: "center", gap: 8 },
+  sectionHeading: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  sectionTitleWrap: { flex: 1, gap: 2 },
   sectionTitle: { fontSize: 17, fontWeight: "700", color: colors.text },
+  sectionSubtitle: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.textMuted,
+  },
   itemCard: {
     backgroundColor: colors.surface,
     borderRadius: 14,
