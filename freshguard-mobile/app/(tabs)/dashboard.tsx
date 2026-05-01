@@ -433,7 +433,7 @@ export default function DashboardScreen() {
                       size={18}
                       color={colors.primary}
                     />
-                    <Text style={styles.quickActionBtnText}>View Active Sales</Text>
+                    <Text style={styles.quickActionBtnText}>Open Active Sales</Text>
                   </Pressable>
 
                   {latestSaleId ? (
@@ -450,9 +450,7 @@ export default function DashboardScreen() {
                         size={18}
                         color={colors.primary}
                       />
-                      <Text style={styles.quickActionBtnText}>
-                        Latest Sale Details
-                      </Text>
+                      <Text style={styles.quickActionBtnText}>Latest Sale</Text>
                     </Pressable>
                   ) : null}
                 </View>
@@ -496,7 +494,9 @@ export default function DashboardScreen() {
                   </>
                 ) : (
                   <View style={styles.latestEmptyWrap}>
-                    <Text style={styles.emptyText}>{emptyRangeMessage}</Text>
+                    <Text style={styles.emptyText}>
+                      {emptyRangeMessage} Record a sale to see it appear here.
+                    </Text>
                     <Pressable
                       onPress={() => router.push("/(tabs)")}
                       style={styles.latestEmptyAction}

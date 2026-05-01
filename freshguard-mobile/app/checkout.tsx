@@ -449,7 +449,7 @@ export default function CheckoutScreen() {
               size={16}
               color={colors.terracotta}
             />
-            <Text style={styles.clearBtnText}>Clear</Text>
+            <Text style={styles.clearBtnText}>Clear Bill</Text>
           </Pressable>
         </View>
 
@@ -558,7 +558,10 @@ export default function CheckoutScreen() {
                   size={44}
                   color={colors.outline}
                 />
-                <Text style={styles.emptyText}>Your bill is empty.</Text>
+                <Text style={styles.emptyText}>This bill is empty.</Text>
+                <Text style={styles.emptySubtext}>
+                  Go back to POS and add products to continue checkout.
+                </Text>
                 <Pressable onPress={handleReturnToPos} style={styles.emptyActionBtn}>
                   <MaterialCommunityIcons
                     name="arrow-left"
@@ -1001,6 +1004,13 @@ const styles = StyleSheet.create({
     borderColor: colors.outlineVariant + "50",
   },
   emptyText: { fontSize: 14, color: colors.textMuted },
+  emptySubtext: {
+    fontSize: 12,
+    color: colors.textMuted,
+    textAlign: "center",
+    lineHeight: 18,
+    maxWidth: 260,
+  },
   emptyActionBtn: {
     marginTop: 4,
     flexDirection: "row",

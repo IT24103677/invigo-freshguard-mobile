@@ -293,6 +293,16 @@ export default function PosScreen() {
   );
   const grandTotal = +(cartSubTotal - cartDiscount).toFixed(2);
   const totalCartUnits = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const selectedCategoryLabel =
+    activeFilter === "ALL" ? "All Categories" : formatCategoryLabel(activeFilter);
+  const selectedStockFilterLabel =
+    stockFilter === "ALL_STOCK"
+      ? "All Stock"
+      : stockFilter === "IN_STOCK"
+      ? "In Stock"
+      : stockFilter === "LOW_STOCK"
+      ? "Low Stock"
+      : "Unavailable";
 
   const handleLogout = () => {
     Alert.alert("Log Out", "Do you want to end your current session?", [
@@ -428,6 +438,11 @@ export default function PosScreen() {
             </Text>
           ) : null}
         </View>
+        {(activeFilter !== "ALL" || stockFilter !== "ALL_STOCK") && (
+          <Text style={styles.searchContextText}>
+            Showing {selectedCategoryLabel} · {selectedStockFilterLabel}
+          </Text>
+        )}
 
         <ScrollView
           horizontal
@@ -552,9 +567,9 @@ export default function PosScreen() {
               size={48}
               color={colors.outline}
             />
-            <Text style={styles.emptyText}>No products matched your search.</Text>
+            <Text style={styles.emptyText}>No products matched this view.</Text>
             <Text style={styles.emptySubtext}>
-              Try a product name, SKU, barcode, or switch the category filter.
+              Try another product search or clear the current category and stock filters.
             </Text>
             <View style={styles.emptyActions}>
               {hasActiveSearch ? (
@@ -939,6 +954,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: colors.primary,
+  },
+  searchContextText: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: -4,
+    marginBottom: 4,
   },
   chips: { gap: 8, paddingVertical: 4 },
   chip: {

@@ -745,6 +745,7 @@ export default function SaleDetailsScreen() {
               disabled={isUploadingReceipt}
               style={({ pressed }) => [
                 styles.receiptActionBtn,
+                sale.receiptImageUrl && styles.receiptActionBtnSecondary,
                 pressed && { opacity: 0.85 },
                 isUploadingReceipt && { opacity: 0.7 },
               ]}
@@ -763,7 +764,7 @@ export default function SaleDetailsScreen() {
                     color={colors.primary}
                   />
                   <Text style={styles.receiptActionBtnText}>
-                    {sale.receiptImageUrl ? "Replace Receipt" : "Attach Receipt"}
+                    {sale.receiptImageUrl ? "Replace Image" : "Attach Receipt"}
                   </Text>
                 </>
               )}
@@ -1339,6 +1340,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryContainer + "55",
     borderWidth: 1,
     borderColor: colors.primaryContainer,
+  },
+  receiptActionBtnSecondary: {
+    backgroundColor: colors.surfaceLow,
+    borderColor: colors.outlineVariant,
   },
   receiptActionBtnText: {
     fontSize: 13,
