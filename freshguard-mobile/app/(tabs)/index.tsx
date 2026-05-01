@@ -489,6 +489,11 @@ export default function PosScreen() {
           })}
         </ScrollView>
 
+        <Text style={styles.stockLegendText}>
+          Low Stock means 5 or fewer sellable units. Unavailable means 0 sellable
+          units.
+        </Text>
+
         <View style={styles.bento}>
           <View
             style={[
@@ -951,6 +956,13 @@ const styles = StyleSheet.create({
   },
   chipLabelActive: { color: colors.white },
   stockChips: { gap: 8, paddingBottom: 4 },
+  stockLegendText: {
+    fontSize: 11,
+    color: colors.textMuted,
+    lineHeight: 16,
+    marginTop: -2,
+    marginBottom: 2,
+  },
   stockChip: {
     paddingHorizontal: 12,
     paddingVertical: 8,
