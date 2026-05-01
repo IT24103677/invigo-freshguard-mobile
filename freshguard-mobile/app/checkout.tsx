@@ -768,6 +768,28 @@ export default function CheckoutScreen() {
                 ) : null}
               </View>
 
+              <View style={styles.finalTotalBar}>
+                <View>
+                  <Text style={styles.finalTotalLabel}>Ready to record</Text>
+                  <Text style={styles.finalTotalAmount}>
+                    Rs. {grandTotal.toFixed(2)}
+                  </Text>
+                </View>
+                {previewChange != null && !Number.isNaN(previewChange) ? (
+                  <View style={styles.finalTotalMetaWrap}>
+                    <Text style={styles.finalTotalMetaLabel}>Change</Text>
+                    <Text
+                      style={[
+                        styles.finalTotalMetaValue,
+                        previewChange < 0 && styles.finalTotalMetaValueError,
+                      ]}
+                    >
+                      Rs. {previewChange.toFixed(2)}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+
               {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
 
               <Pressable
@@ -1102,6 +1124,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     color: colors.primary,
+  },
+  finalTotalBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    backgroundColor: colors.primaryFixed,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.primaryContainer,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  finalTotalLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.7,
+    textTransform: "uppercase",
+    color: colors.primary,
+  },
+  finalTotalAmount: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: colors.primary,
+    marginTop: 2,
+  },
+  finalTotalMetaWrap: {
+    alignItems: "flex-end",
+    gap: 2,
+  },
+  finalTotalMetaLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    color: colors.textMuted,
+  },
+  finalTotalMetaValue: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  finalTotalMetaValueError: {
+    color: colors.terracotta,
   },
   field: {
     flexDirection: "row",
