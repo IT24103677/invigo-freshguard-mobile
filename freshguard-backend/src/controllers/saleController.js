@@ -81,7 +81,7 @@ const getSales = async (req, res) => {
       success: true,
       data: salesResult.items,
       meta: salesResult.pagination,
-      message: "Sales fetched successfully.",
+      message: "Sales loaded successfully.",
     });
   } catch (error) {
     return sendError(res, error);
@@ -102,7 +102,7 @@ const getSaleById = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: sale,
-      message: "Sale fetched successfully.",
+      message: "Sale loaded successfully.",
     });
   } catch (error) {
     return sendError(res, error);

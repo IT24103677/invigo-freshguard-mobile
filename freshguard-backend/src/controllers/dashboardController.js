@@ -7,7 +7,7 @@ const getDashboardSummary = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: summary,
-      message: "Dashboard summary fetched successfully.",
+      message: "Dashboard summary loaded successfully.",
     });
   } catch (error) {
     return res.status(500).json({

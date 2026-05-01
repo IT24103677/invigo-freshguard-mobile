@@ -764,7 +764,7 @@ export default function SaleDetailsScreen() {
                     color={colors.primary}
                   />
                   <Text style={styles.receiptActionBtnText}>
-                    {sale.receiptImageUrl ? "Replace Image" : "Attach Receipt"}
+                    {sale.receiptImageUrl ? "Replace Receipt" : "Attach Receipt"}
                   </Text>
                 </>
               )}

@@ -128,7 +128,7 @@ export default function DashboardScreen() {
   );
 
   const handleLogout = () => {
-    Alert.alert("Log Out", "Do you want to end your current session?", [
+    Alert.alert("Log Out", "Do you want to sign out of this session?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Log Out",
@@ -195,7 +195,7 @@ export default function DashboardScreen() {
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading dashboard summary...</Text>
+          <Text style={styles.loadingText}>Loading your sales summary...</Text>
         </View>
       ) : (
         <ScrollView
@@ -515,16 +515,16 @@ export default function DashboardScreen() {
           )}
 
           <View style={styles.sessionCard}>
-            <Text style={styles.sessionLabel}>Current Session</Text>
+            <Text style={styles.sessionLabel}>Signed In As</Text>
             <Text style={styles.sessionValue}>
-              {currentUser?.name ?? "Authenticated User"}
+              {currentUser?.name ?? "Active User"}
             </Text>
             <Text style={styles.sessionMeta}>
               {currentUser?.email ?? "User email unavailable"}
             </Text>
             <View style={styles.roleBadge}>
               <Text style={styles.roleBadgeText}>
-                {currentUser?.role ?? "SIGNED IN"}
+                {currentUser?.role ?? "ACTIVE SESSION"}
               </Text>
             </View>
           </View>

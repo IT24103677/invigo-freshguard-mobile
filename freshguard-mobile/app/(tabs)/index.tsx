@@ -440,7 +440,7 @@ export default function PosScreen() {
         </View>
         {(activeFilter !== "ALL" || stockFilter !== "ALL_STOCK") && (
           <Text style={styles.searchContextText}>
-            Showing {selectedCategoryLabel} Â· {selectedStockFilterLabel}
+            Showing {selectedCategoryLabel} · {selectedStockFilterLabel}
           </Text>
         )}
 
@@ -569,7 +569,7 @@ export default function PosScreen() {
             />
             <Text style={styles.emptyText}>No products matched this view.</Text>
             <Text style={styles.emptySubtext}>
-              Try another product search or clear the current category and stock filters.
+              Try another search or clear the current category and stock filters.
             </Text>
             <View style={styles.emptyActions}>
               {hasActiveSearch ? (
@@ -799,7 +799,7 @@ export default function PosScreen() {
                 <Text style={styles.billToolsTitle}>Current Bill</Text>
                 <Text style={styles.billToolsMeta}>
                   {cart.length} {cart.length === 1 ? "product" : "products"} selected
-                  {" Â· "}
+                  {" · "}
                   {totalCartUnits} {totalCartUnits === 1 ? "unit" : "units"}
                 </Text>
               </View>
@@ -942,7 +942,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     marginTop: -2,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   searchHelperText: {
     flex: 1,
@@ -958,8 +958,8 @@ const styles = StyleSheet.create({
   searchContextText: {
     fontSize: 12,
     color: colors.textMuted,
-    marginTop: -4,
-    marginBottom: 4,
+    marginTop: -2,
+    marginBottom: 2,
   },
   chips: { gap: 8, paddingVertical: 4 },
   chip: {
@@ -1109,11 +1109,11 @@ const styles = StyleSheet.create({
   productMetaTag: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 3,
     backgroundColor: colors.primaryContainer + "50",
     borderRadius: 999,
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 3,
   },
   productMetaTagText: {
     fontSize: 11,
@@ -1341,3 +1341,5 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
 });
+
+
