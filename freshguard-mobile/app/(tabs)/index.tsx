@@ -277,9 +277,10 @@ export default function PosScreen() {
       }, {}),
     [products]
   );
+  const canValidateCartStock = !loading && Object.keys(productsMap).length > 0;
   const cartStockIssues = useMemo(
-    () => getCartStockIssues(cart, productsMap),
-    [cart, productsMap]
+    () => (canValidateCartStock ? getCartStockIssues(cart, productsMap) : []),
+    [canValidateCartStock, cart, productsMap]
   );
   const cartSubTotal = cart.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,

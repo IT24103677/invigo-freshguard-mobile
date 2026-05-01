@@ -132,6 +132,12 @@ export default function CheckoutScreen() {
   const totalCartUnits = cart.reduce((sum, item) => sum + item.quantity, 0);
   const normalizedCustomerName = normalizeCustomerName(customerName);
   const trimmedCustomerEmail = customerEmail.trim();
+  const hasPreservedDraftDetails =
+    customerName.trim().length > 0 ||
+    trimmedCustomerEmail.length > 0 ||
+    notes.trim().length > 0 ||
+    amountGiven.trim().length > 0 ||
+    receiptAsset != null;
   const parsedAmountGiven = amountGiven.trim() ? parseFloat(amountGiven) : null;
   const previewChange =
     parsedAmountGiven != null && !Number.isNaN(parsedAmountGiven)
@@ -536,6 +542,12 @@ export default function CheckoutScreen() {
             />
             <Text style={styles.addMoreBtnText}>Add More Items</Text>
           </Pressable>
+          {hasPreservedDraftDetails ? (
+            <Text style={styles.addMoreHintText}>
+              Your customer details, payment, notes, and receipt stay with this
+              bill while you continue shopping.
+            </Text>
+          ) : null}
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Bill Items</Text>
@@ -945,6 +957,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     color: colors.primary,
+  },
+  addMoreHintText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.textMuted,
+    marginTop: -4,
   },
   section: { gap: 10 },
   sectionTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
