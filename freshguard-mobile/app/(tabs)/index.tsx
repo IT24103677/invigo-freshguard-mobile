@@ -790,7 +790,7 @@ export default function PosScreen() {
                       size={16}
                       color={colors.terracotta}
                     />
-                    <Text style={styles.billIssueTitle}>Review Bill Stock</Text>
+                    <Text style={styles.billIssueTitle}>Stock Changed</Text>
                   </View>
                   <Text style={styles.billIssueText}>
                     {cartStockIssues[0].productName}: {cartStockIssues[0].reason}
@@ -851,7 +851,7 @@ export default function PosScreen() {
               />
               <Text style={styles.checkoutText}>
                 {cartStockIssues.length > 0
-                  ? "Resolve Bill Stock First"
+                  ? "Review stock to continue"
                   : `Checkout (${totalCartUnits} ${
                       totalCartUnits === 1 ? "unit" : "units"
                     })`}

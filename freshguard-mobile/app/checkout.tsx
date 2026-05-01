@@ -624,13 +624,12 @@ export default function CheckoutScreen() {
                     }
                   />
                 </View>
-                <Text style={styles.fieldHintText}>
-                  {customerName.trim().length === 0
-                    ? "Add a customer name only when you need it on the receipt."
-                    : normalizedCustomerName === customerName
-                    ? "Customer name looks clean."
-                    : `Will be saved as "${normalizedCustomerName}".`}
-                </Text>
+                {customerName.trim().length > 0 &&
+                normalizedCustomerName !== customerName ? (
+                  <Text style={styles.fieldHintText}>
+                    Will be saved as &quot;{normalizedCustomerName}&quot;.
+                  </Text>
+                ) : null}
                 <View style={styles.field}>
                   <MaterialCommunityIcons
                     name="email-outline"
@@ -649,18 +648,11 @@ export default function CheckoutScreen() {
                     }
                   />
                 </View>
-                <Text
-                  style={[
-                    styles.fieldHintText,
-                    isCustomerEmailInvalid && styles.fieldHintErrorText,
-                  ]}
-                >
-                  {trimmedCustomerEmail.length === 0
-                    ? "Add an email only if you want a reusable customer contact."
-                    : isCustomerEmailInvalid
-                    ? "Enter a valid email address or clear this field."
-                    : "Customer email looks valid."}
-                </Text>
+                {isCustomerEmailInvalid ? (
+                  <Text style={[styles.fieldHintText, styles.fieldHintErrorText]}>
+                    Enter a valid email address or clear this field.
+                  </Text>
+                ) : null}
               </View>
 
               <Text style={styles.checkoutSectionTitle}>Payment and Notes</Text>
@@ -682,25 +674,29 @@ export default function CheckoutScreen() {
                     }
                   />
                 </View>
-                <Text
-                  style={[
-                    styles.fieldHintText,
-                    (isAmountInvalid || isAmountInsufficient) &&
-                      styles.fieldHintErrorText,
-                  ]}
-                >
-                  {isAmountMissing
-                    ? hasStockSnapshot
+                {(!hasStockSnapshot ||
+                  cartStockIssues.length > 0 ||
+                  isAmountMissing ||
+                  isAmountInvalid ||
+                  isAmountInsufficient) && (
+                  <Text
+                    style={[
+                      styles.fieldHintText,
+                      (isAmountInvalid || isAmountInsufficient) &&
+                        styles.fieldHintErrorText,
+                    ]}
+                  >
+                    {!hasStockSnapshot
+                      ? "Waiting for a live stock check before checkout can continue."
+                      : cartStockIssues.length > 0
+                      ? "Resolve the stock changes above before recording this sale."
+                      : isAmountMissing
                       ? "Enter the cash amount received to enable checkout."
-                      : "Waiting for a live stock check before checkout can continue."
-                    : cartStockIssues.length > 0
-                    ? "Resolve the stock changes above before recording this sale."
-                    : isAmountInvalid
-                    ? "Amount given must be a valid non-negative number."
-                    : isAmountInsufficient
-                    ? "Amount given must cover the grand total."
-                    : `Payment looks valid. Change to return: Rs. ${(previewChange ?? 0).toFixed(2)}`}
-                </Text>
+                      : isAmountInvalid
+                      ? "Amount given must be a valid non-negative number."
+                      : "Amount given must cover the grand total."}
+                  </Text>
+                )}
                 <View style={styles.field}>
                   <MaterialCommunityIcons
                     name="note-text-outline"
