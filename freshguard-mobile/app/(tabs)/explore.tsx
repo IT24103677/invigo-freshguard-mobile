@@ -285,7 +285,7 @@ export default function SalesScreen() {
       setHasMoreSales(data.meta?.hasMore ?? false);
     } catch {
       if (!append) {
-        setErrorMsg("Failed to load sales.");
+        setErrorMsg("Could not load sales.");
       }
     } finally {
       setLoading(false);
@@ -309,7 +309,7 @@ export default function SalesScreen() {
   }, [currentPage, hasMoreSales, loadSales, loading, loadingMore, refreshing]);
 
   const handleLogout = () => {
-    Alert.alert("Log Out", "Do you want to end your current session?", [
+    Alert.alert("Log Out", "Do you want to sign out of this session?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Log Out",
@@ -411,7 +411,7 @@ export default function SalesScreen() {
       <SafeAreaView style={styles.safe} edges={["top"]}>
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading sales center...</Text>
+          <Text style={styles.loadingText}>Loading sales...</Text>
         </View>
       </SafeAreaView>
     );
@@ -657,7 +657,17 @@ export default function SalesScreen() {
           </View>
         )}
 
-        {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
+        {errorMsg ? (
+          <View style={styles.errorRow}>
+            <Text style={styles.errorText}>{errorMsg}</Text>
+            <Pressable
+              onPress={() => loadSales({ page: 1 })}
+              style={styles.retryInlineBtn}
+            >
+              <Text style={styles.retryInlineBtnText}>Try Again</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {voidSales.length > 0 && (
           <View style={styles.section}>
@@ -1197,11 +1207,31 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.terracotta,
   },
+  errorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 12,
+  },
   errorText: {
+    flex: 1,
     color: colors.terracotta,
     fontSize: 14,
     fontWeight: "600",
-    marginBottom: 12,
+  },
+  retryInlineBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: colors.terracottaSoft + "40",
+    borderWidth: 1,
+    borderColor: colors.terracottaSoft,
+  },
+  retryInlineBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.terracotta,
   },
   section: { marginTop: 16, gap: 10 },
   sectionHeading: {

@@ -41,7 +41,7 @@ const getProducts = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: products,
-      message: "Products fetched successfully.",
+      message: "Products loaded successfully.",
     });
   } catch (error) {
     return sendError(res, error);
@@ -62,7 +62,7 @@ const getProductById = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: product,
-      message: "Product fetched successfully.",
+      message: "Product loaded successfully.",
     });
   } catch (error) {
     return sendError(res, error);

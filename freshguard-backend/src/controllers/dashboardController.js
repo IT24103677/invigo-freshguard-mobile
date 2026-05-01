@@ -12,7 +12,7 @@ const getDashboardSummary = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to fetch dashboard summary.",
+      message: error.message || "Could not load the dashboard summary.",
     });
   }
 };

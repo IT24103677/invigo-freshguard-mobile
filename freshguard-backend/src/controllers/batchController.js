@@ -51,7 +51,7 @@ const getBatches = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: batches,
-      message: "Batches fetched successfully.",
+      message: "Batches loaded successfully.",
     });
   } catch (error) {
     return sendError(res, error);
@@ -72,7 +72,7 @@ const getBatchById = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: batch,
-      message: "Batch fetched successfully.",
+      message: "Batch loaded successfully.",
     });
   } catch (error) {
     return sendError(res, error);

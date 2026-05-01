@@ -91,8 +91,8 @@ const login = async (req, res) => {
         token,
         user: sanitizeUser(user),
       },
-      message: "Login successful.",
-    });
+    message: "Login successful.",
+  });
   } catch (error) {
     return sendError(res, error);
   }
@@ -104,7 +104,7 @@ const me = async (req, res) => {
     data: {
       user: req.user,
     },
-    message: "Current user fetched successfully.",
+    message: "Current user loaded successfully.",
   });
 };
 
@@ -119,7 +119,7 @@ const listSalesUsers = async (_req, res) => {
       data: {
         users: users.map(sanitizeUser),
       },
-      message: "Sales users fetched successfully.",
+      message: "Sales users loaded successfully.",
     });
   } catch (error) {
     return sendError(res, error);

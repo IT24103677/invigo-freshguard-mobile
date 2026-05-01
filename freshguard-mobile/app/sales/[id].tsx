@@ -438,7 +438,7 @@ export default function SaleDetailsScreen() {
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.helperText}>Loading sale details...</Text>
+          <Text style={styles.helperText}>Loading sale...</Text>
         </View>
       </SafeAreaView>
     );
@@ -456,9 +456,14 @@ export default function SaleDetailsScreen() {
           <Text style={styles.errorText}>
             {errorMessage || "Sale unavailable."}
           </Text>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>Go Back</Text>
-          </Pressable>
+          <View style={styles.errorActions}>
+            <Pressable onPress={() => loadSale()} style={styles.retryBtn}>
+              <Text style={styles.retryBtnText}>Try Again</Text>
+            </Pressable>
+            <Pressable onPress={() => router.back()} style={styles.backBtn}>
+              <Text style={styles.backBtnText}>Go Back</Text>
+            </Pressable>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -528,6 +533,7 @@ export default function SaleDetailsScreen() {
               onPress={handleShareReceipt}
               style={({ pressed }) => [
                 styles.shareBtn,
+                styles.shareBtnSecondary,
                 pressed && { opacity: 0.85 },
               ]}
             >
@@ -542,6 +548,7 @@ export default function SaleDetailsScreen() {
               onPress={handleShareBillId}
               style={({ pressed }) => [
                 styles.shareBtn,
+                styles.shareBtnSecondary,
                 pressed && { opacity: 0.85 },
               ]}
             >
@@ -1088,8 +1095,25 @@ const styles = StyleSheet.create({
     color: colors.terracotta,
     textAlign: "center",
   },
-  backBtn: {
+  errorActions: {
+    flexDirection: "row",
+    gap: 10,
     marginTop: 8,
+  },
+  retryBtn: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+  },
+  retryBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  backBtn: {
     backgroundColor: colors.primaryContainer,
     paddingHorizontal: 20,
     paddingVertical: 10,
@@ -1163,6 +1187,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryContainer + "55",
     borderWidth: 1,
     borderColor: colors.primaryContainer,
+  },
+  shareBtnSecondary: {
+    backgroundColor: colors.surface,
+    borderColor: colors.outlineVariant + "70",
   },
   shareBtnText: {
     fontSize: 13,

@@ -115,7 +115,7 @@ export default function DashboardScreen() {
       setLatestSaleTime(summary.latestActiveSale?.saleDateTime ?? "");
     } catch {
       setCurrentUser(null);
-      setErrorMessage("Failed to load live sales dashboard.");
+        setErrorMessage("Could not load the live sales dashboard.");
     } finally {
       setLoading(false);
     }
@@ -227,7 +227,7 @@ export default function DashboardScreen() {
             <View style={styles.errorCard}>
               <Text style={styles.errorText}>{errorMessage}</Text>
               <Pressable onPress={loadDashboard} style={styles.retryBtn}>
-                <Text style={styles.retryBtnText}>Retry</Text>
+                <Text style={styles.retryBtnText}>Try Again</Text>
               </Pressable>
             </View>
           ) : (

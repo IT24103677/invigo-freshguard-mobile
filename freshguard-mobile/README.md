@@ -36,6 +36,27 @@ If your laptop IP changes on Wi-Fi, update `apiBaseUrlNative`, then restart Expo
 npx expo start --clear
 ```
 
+## Final demo checklist
+
+Before the final hosted demo:
+
+1. Replace the local URLs in `app.json` with your hosted backend URL.
+2. Restart Expo after changing `app.json`:
+
+   ```bash
+   npx expo start --clear
+   ```
+
+3. Verify these flows against the hosted API:
+   - login
+   - POS product loading
+   - checkout and sale recording
+   - receipt upload
+   - sales history and sale details
+   - dashboard summary
+
+If a hosted build is being demonstrated on a phone, make sure `apiBaseUrlNative` also points to the hosted backend instead of a LAN IP.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)

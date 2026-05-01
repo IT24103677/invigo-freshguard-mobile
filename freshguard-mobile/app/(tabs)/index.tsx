@@ -208,7 +208,7 @@ export default function PosScreen() {
       const data = await getProducts();
       setProducts(data);
     } catch {
-      setErrorMsg("Failed to load products.");
+        setErrorMsg("Could not load products.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -305,7 +305,7 @@ export default function PosScreen() {
       : "Unavailable";
 
   const handleLogout = () => {
-    Alert.alert("Log Out", "Do you want to end your current session?", [
+    Alert.alert("Log Out", "Do you want to sign out of this session?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Log Out",
@@ -440,7 +440,7 @@ export default function PosScreen() {
         </View>
         {(activeFilter !== "ALL" || stockFilter !== "ALL_STOCK") && (
           <Text style={styles.searchContextText}>
-            Showing {selectedCategoryLabel} · {selectedStockFilterLabel}
+            Showing {selectedCategoryLabel} Â· {selectedStockFilterLabel}
           </Text>
         )}
 
@@ -556,10 +556,20 @@ export default function PosScreen() {
 
         <Text style={styles.sectionTitle}>Active Inventory</Text>
 
-        {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
+        {errorMsg ? (
+          <View style={styles.errorRow}>
+            <Text style={styles.errorText}>{errorMsg}</Text>
+            <Pressable onPress={() => loadProducts()} style={styles.retryInlineBtn}>
+              <Text style={styles.retryInlineBtnText}>Try Again</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {loading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+          <View style={styles.loadingBlock}>
+            <ActivityIndicator color={colors.primary} />
+            <Text style={styles.loadingText}>Loading products...</Text>
+          </View>
         ) : filtered.length === 0 ? (
           <View style={styles.empty}>
             <MaterialCommunityIcons
@@ -799,7 +809,7 @@ export default function PosScreen() {
                 <Text style={styles.billToolsTitle}>Current Bill</Text>
                 <Text style={styles.billToolsMeta}>
                   {cart.length} {cart.length === 1 ? "product" : "products"} selected
-                  {" · "}
+                  {" Â· "}
                   {totalCartUnits} {totalCartUnits === 1 ? "unit" : "units"}
                 </Text>
               </View>
@@ -1031,6 +1041,34 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.terracotta,
   },
+  errorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  retryInlineBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: colors.terracottaSoft + "40",
+    borderWidth: 1,
+    borderColor: colors.terracottaSoft,
+  },
+  retryInlineBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.terracotta,
+  },
+  loadingBlock: {
+    alignItems: "center",
+    gap: 10,
+    paddingTop: 40,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: colors.textMuted,
+  },
   empty: { alignItems: "center", paddingTop: 48, gap: 12 },
   emptyText: {
     fontSize: 16,
@@ -1143,14 +1181,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginTop: 2,
+    marginTop: 3,
     flexWrap: "wrap",
   },
   productFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 4,
+    marginTop: 6,
   },
   productPrice: { fontSize: 14, fontWeight: "700", color: colors.primary },
   productControlWrap: {
@@ -1170,12 +1208,12 @@ const styles = StyleSheet.create({
     gap: 2,
     backgroundColor: colors.primaryContainer + "60",
     borderRadius: 10,
-    paddingHorizontal: 4,
+    paddingHorizontal: 5,
     paddingVertical: 3,
   },
   qtyStepperBtn: {
-    width: 22,
-    height: 22,
+    width: 24,
+    height: 24,
     borderRadius: 6,
     alignItems: "center",
     justifyContent: "center",
@@ -1185,7 +1223,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceHigh,
   },
   qtyStepperValue: {
-    minWidth: 22,
+    minWidth: 24,
     textAlign: "center",
     fontSize: 12,
     fontWeight: "800",
@@ -1203,7 +1241,13 @@ const styles = StyleSheet.create({
     maxWidth: 160,
     textAlign: "right",
   },
-  addHint: { flexDirection: "row", alignItems: "center", gap: 4 },
+  addHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    minHeight: 24,
+  },
   addHintDisabled: {
     backgroundColor: colors.terracottaSoft + "40",
     borderRadius: 999,

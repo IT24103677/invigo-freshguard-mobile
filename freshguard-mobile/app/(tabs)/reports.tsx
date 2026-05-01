@@ -14,7 +14,7 @@ export default function ReportsScreen() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = () => {
-    Alert.alert("Log Out", "Do you want to end your current session?", [
+    Alert.alert("Log Out", "Do you want to sign out of this session?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Log Out",
