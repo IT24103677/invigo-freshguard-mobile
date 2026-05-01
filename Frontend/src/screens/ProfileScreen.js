@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../components/Card';
 import FormInput from '../components/FormInput';
 import Logo from '../components/Logo';
-import PrimaryButton from '../components/PrimaryButton';
-import { changeMyPassword, getCurrentUser } from '../api';
-import { saveSession } from '../session';
+import PrimaryButton, { GhostButton } from '../components/PrimaryButton';
+import { apiUrl, changeMyPassword, getCurrentUser, uploadMyProfileAvatar } from '../api';
+import { getAuthToken, saveSession } from '../session';
 import { colors } from '../theme';
 
 const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,30}$/;
+const MAX_AVATAR_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
 function cleanRole(role) {
   return String(role || '').toUpperCase();
@@ -20,9 +22,19 @@ function normaliseProfile(user) {
     ...user,
     status: user?.status || 'ACTIVE',
     role: user?.role || 'STAFF',
+    avatarPath: user?.avatarPath || '',
+    avatarUpdatedAt: user?.avatarUpdatedAt || '',
     accountLocked: Boolean(user?.accountLocked),
     lastLoginAt: user?.lastLoginAt || '',
     doj: user?.doj || '',
+  };
+}
+
+function buildAvatarSource(avatarPath, token) {
+  if (!avatarPath || !token) return null;
+  return {
+    uri: apiUrl(avatarPath),
+    headers: Platform.OS === 'web' ? undefined : { Authorization: `Bearer ${token}` },
   };
 }
 
@@ -42,7 +54,9 @@ function formatDateTime(value) {
 export default function ProfileScreen({ sessionUser, setSessionUser }) {
   const [profile, setProfile] = useState(normaliseProfile(sessionUser || {}));
   const [refreshing, setRefreshing] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [avatarToken, setAvatarToken] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [passwordForm, setPasswordForm] = useState({
@@ -61,6 +75,22 @@ export default function ProfileScreen({ sessionUser, setSessionUser }) {
 
   useEffect(() => {
     refreshProfile();
+  }, [sessionUser?.id]);
+
+  useEffect(() => {
+    let active = true;
+
+    getAuthToken()
+      .then((token) => {
+        if (active) setAvatarToken(token || '');
+      })
+      .catch(() => {
+        if (active) setAvatarToken('');
+      });
+
+    return () => {
+      active = false;
+    };
   }, [sessionUser?.id]);
 
   function updatePasswordField(key, value) {
@@ -131,6 +161,57 @@ export default function ProfileScreen({ sessionUser, setSessionUser }) {
     }
   }
 
+  async function chooseProfilePhoto() {
+    setError('');
+    setSuccess('');
+
+    try {
+      if (Platform.OS !== 'web') {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          setError('Please allow gallery access so you can upload a profile photo.');
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets?.length) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      if (!asset?.uri && !asset?.file) {
+        setError('Please choose a valid image file.');
+        return;
+      }
+
+      if (asset.fileSize && asset.fileSize > MAX_AVATAR_FILE_SIZE_BYTES) {
+        setError('Profile photo must be 5 MB or smaller.');
+        return;
+      }
+
+      setUploadingAvatar(true);
+      const response = await uploadMyProfileAvatar(asset);
+      const merged = normaliseProfile({ ...(sessionUser || {}), ...(response.user || {}) });
+      setProfile(merged);
+      setSessionUser(merged);
+      await saveSession({ user: merged });
+      setSuccess(response.message || 'Profile photo updated successfully.');
+    } catch (uploadError) {
+      setError(uploadError.message || 'Could not upload your profile photo right now.');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
+
+  const avatarSource = buildAvatarSource(profile.avatarPath, avatarToken);
+
   return (
     <View style={styles.root}>
       <ScrollView
@@ -152,15 +233,42 @@ export default function ProfileScreen({ sessionUser, setSessionUser }) {
         </View>
 
         <View style={styles.profileTop}>
-          <View style={[styles.avatar, { backgroundColor: colors.emerald }]}>
-            <Text style={styles.avatarText}>
-              {String(name).slice(0, 2).toUpperCase()}
-            </Text>
-          </View>
+          <Pressable
+            onPress={chooseProfilePhoto}
+            disabled={uploadingAvatar}
+            style={({ pressed }) => [
+              styles.avatarWrap,
+              pressed && !uploadingAvatar ? { opacity: 0.86 } : null,
+            ]}
+          >
+            {avatarSource ? (
+              <Image source={avatarSource} style={styles.avatarImage} />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: colors.emerald }]}>
+                <Text style={styles.avatarText}>
+                  {String(name).slice(0, 2).toUpperCase()}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.avatarBadge}>
+              {uploadingAvatar ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Ionicons name="camera-outline" size={18} color="#fff" />
+              )}
+            </View>
+          </Pressable>
 
           <Text style={styles.name}>{name}</Text>
           <Text style={styles.email}>{email}</Text>
           <Text style={styles.roleBadge}>{role}</Text>
+          <Text style={styles.avatarHint}>Upload a JPG, PNG, or WEBP image up to 5 MB.</Text>
+          <GhostButton
+            title={profile.avatarPath ? 'Change Photo' : 'Upload Photo'}
+            onPress={chooseProfilePhoto}
+            style={styles.avatarButton}
+          />
         </View>
 
         {!!error && <Text style={styles.warn}>{error}</Text>}
@@ -327,6 +435,10 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
 
+  avatarWrap: {
+    position: 'relative',
+  },
+
   avatar: {
     width: 92,
     height: 92,
@@ -338,6 +450,27 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },
     elevation: 10,
+  },
+
+  avatarImage: {
+    width: 92,
+    height: 92,
+    borderRadius: 34,
+    backgroundColor: '#DDE7DB',
+  },
+
+  avatarBadge: {
+    position: 'absolute',
+    right: -4,
+    bottom: -4,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.purple,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: colors.background,
   },
 
   avatarText: {
@@ -368,6 +501,21 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+
+  avatarHint: {
+    marginTop: 12,
+    color: 'rgba(15,23,42,0.50)',
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    maxWidth: 240,
+  },
+
+  avatarButton: {
+    marginTop: 14,
+    minWidth: 168,
   },
 
   warn: {

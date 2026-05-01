@@ -49,6 +49,8 @@ export default function LoginScreen({ go, setSessionUser }) {
         email: auth.email,
         doj: auth.doj,
         role: auth.role,
+        avatarPath: auth.avatarPath || '',
+        avatarUpdatedAt: auth.avatarUpdatedAt || '',
         accountLocked: Boolean(auth.accountLocked),
         status: auth.status || 'ACTIVE',
         lastLoginAt: auth.lastLoginAt || '',

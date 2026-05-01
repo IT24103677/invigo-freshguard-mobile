@@ -36,6 +36,8 @@ function buildUserSession(cachedUser, currentUser) {
     email: merged.email,
     doj: merged.doj,
     role: normalizeRole(merged.role),
+    avatarPath: merged.avatarPath || '',
+    avatarUpdatedAt: merged.avatarUpdatedAt || '',
     accountLocked: Boolean(merged.accountLocked),
     status: merged.status || 'ACTIVE',
     lastLoginAt: merged.lastLoginAt || '',

@@ -17,7 +17,11 @@ async function parseError(response, fallback) {
 }
 
 async function request(path, options = {}, useAuth = true) {
-  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  const headers = { ...(options.headers || {}) };
+  if (!options.skipJsonContentType && !headers['Content-Type'] && !headers['content-type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   if (useAuth) {
     const token = await getAuthToken();
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -78,6 +82,33 @@ export async function resetPassword(email, newPassword) {
 export async function getCurrentUser() {
   const response = await request('/auth/me');
   if (!response.ok) throw new Error(await parseError(response, 'Failed to fetch profile'));
+  return response.json();
+}
+
+function appendAvatarToFormData(formData, asset) {
+  if (asset?.file) {
+    formData.append('avatar', asset.file);
+    return;
+  }
+
+  formData.append('avatar', {
+    uri: asset.uri,
+    name: asset.fileName || `profile-photo-${Date.now()}.jpg`,
+    type: asset.mimeType || 'image/jpeg',
+  });
+}
+
+export async function uploadMyProfileAvatar(asset) {
+  const formData = new FormData();
+  appendAvatarToFormData(formData, asset);
+
+  const response = await request('/auth/me/avatar', {
+    method: 'PUT',
+    body: formData,
+    skipJsonContentType: true,
+  });
+
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to upload profile photo'));
   return response.json();
 }
 

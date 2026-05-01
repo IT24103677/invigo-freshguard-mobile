@@ -5,6 +5,13 @@ const signToken = require('../utils/token');
 const asyncHandler = require('../utils/asyncHandler');
 const { sendMail } = require('../utils/mailer');
 const buildPasswordResetEmail = require('../utils/passwordResetEmail');
+const { buildProfileImagePath } = require('../utils/profileImage');
+const {
+  storeProfileImage,
+  findProfileImage,
+  deleteProfileImage,
+  openProfileImageDownloadStream,
+} = require('../config/gridfs');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,30}$/;
@@ -29,6 +36,8 @@ function buildAuthUser(user) {
     name: user.name,
     doj: user.doj,
     role: user.role,
+    avatarPath: buildProfileImagePath(user),
+    avatarUpdatedAt: user.profileImageUpdatedAt,
     accountLocked: user.accountLocked,
     status: user.status,
     lastLoginAt: user.lastLoginAt,
@@ -231,6 +240,84 @@ const getCurrentUser = asyncHandler(async (req, res) => {
   res.json(buildAuthUser(req.user));
 });
 
+const uploadMyProfileAvatar = asyncHandler(async (req, res) => {
+  if (String(req.user?.role || '').toUpperCase() !== 'STAFF') {
+    return res.status(403).json({ message: 'Only staff can manage profile photos here.' });
+  }
+
+  if (!req.file?.buffer) {
+    return res.status(400).json({ message: 'Please choose a profile photo to upload.' });
+  }
+
+  const user = await User.findById(req.user._id);
+  if (!user) return res.status(404).json({ message: 'User not found.' });
+  if (String(user.status || 'ACTIVE').toUpperCase() !== 'ACTIVE') {
+    return res.status(403).json({ message: 'Account is inactive. Please contact admin.' });
+  }
+
+  const oldFileId = user.profileImageFileId;
+  let storedFile = null;
+
+  try {
+    storedFile = await storeProfileImage({
+      userId: user._id,
+      buffer: req.file.buffer,
+      mimetype: req.file.mimetype,
+      originalName: req.file.originalname,
+    });
+
+    user.profileImageFileId = storedFile._id;
+    user.profileImageFilename = storedFile.filename;
+    user.profileImageContentType = req.file.mimetype;
+    user.profileImageUpdatedAt = new Date();
+    await user.save();
+
+    if (oldFileId) {
+      await deleteProfileImage(oldFileId);
+    }
+  } catch (error) {
+    if (storedFile?._id) {
+      await deleteProfileImage(storedFile._id).catch(() => null);
+    }
+    throw error;
+  }
+
+  return res.json({
+    message: 'Profile photo updated successfully.',
+    user: buildAuthUser(user),
+  });
+});
+
+const getMyProfileAvatar = asyncHandler(async (req, res) => {
+  if (String(req.user?.role || '').toUpperCase() !== 'STAFF') {
+    return res.status(403).json({ message: 'Only staff can view profile photos here.' });
+  }
+
+  if (!req.user?.profileImageFileId) {
+    return res.status(404).json({ message: 'No profile photo uploaded yet.' });
+  }
+
+  const file = await findProfileImage(req.user.profileImageFileId);
+  if (!file) {
+    return res.status(404).json({ message: 'Profile photo not found.' });
+  }
+
+  res.setHeader('Content-Type', file.contentType || req.user.profileImageContentType || 'application/octet-stream');
+  res.setHeader('Cache-Control', 'private, max-age=300');
+
+  const downloadStream = openProfileImageDownloadStream(file._id);
+  downloadStream.on('error', () => {
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Could not load profile photo right now.' });
+      return;
+    }
+
+    res.end();
+  });
+
+  downloadStream.pipe(res);
+});
+
 const changeMyPassword = asyncHandler(async (req, res) => {
   if (String(req.user?.role || '').toUpperCase() !== 'STAFF') {
     return res.status(403).json({ message: 'Only staff can manage their profile password here.' });
@@ -283,5 +370,7 @@ module.exports = {
   verifyOtp,
   resetPassword,
   getCurrentUser,
+  uploadMyProfileAvatar,
+  getMyProfileAvatar,
   changeMyPassword,
 };
