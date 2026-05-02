@@ -6,7 +6,7 @@ import Card from '../components/Card';
 import FormInput from '../components/FormInput';
 import PrimaryButton, { GhostButton } from '../components/PrimaryButton';
 import Screen from '../components/Screen';
-import TopBar from '../components/TopBar';
+import WorkspaceHeader from '../components/WorkspaceHeader';
 import { colors } from '../theme';
 
 const CATEGORIES = ['Produce', 'Dairy', 'Bakery', 'Meat', 'Beverages', 'Dry Goods', 'Frozen', 'Other'];
@@ -378,7 +378,7 @@ function SupplierModal({ visible, onClose, onSubmit, initialSupplier, loading })
   );
 }
 
-export default function SupplierManagementScreen({ go, sessionUser }) {
+export default function SupplierManagementScreen({ go, sessionUser, onLogout }) {
   const [suppliers, setSuppliers] = useState([]);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -484,7 +484,11 @@ export default function SupplierManagementScreen({ go, sessionUser }) {
   if (!isAdmin) {
     return (
       <Screen scroll={false} style={{ paddingBottom: 0 }}>
-        <TopBar title="Suppliers" rightText="Home" onRight={() => go('dashboard')} />
+        <WorkspaceHeader
+          pillLabel="Supplier Management"
+          pillIcon="business-outline"
+          onLogout={onLogout}
+        />
         <Card style={styles.restrictedCard}>
           <Text style={styles.sectionTitle}>Admin Access Required</Text>
           <Text style={styles.restrictedText}>
@@ -497,7 +501,11 @@ export default function SupplierManagementScreen({ go, sessionUser }) {
 
   return (
     <Screen scroll={false} style={{ paddingBottom: 0 }}>
-      <TopBar title="Suppliers" rightText="Home" onRight={() => go('dashboard')} />
+      <WorkspaceHeader
+        pillLabel="Supplier Management"
+        pillIcon="business-outline"
+        onLogout={onLogout}
+      />
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"

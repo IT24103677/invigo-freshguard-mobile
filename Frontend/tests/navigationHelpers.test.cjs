@@ -22,10 +22,12 @@ test('public route mapping resolves auth screens', () => {
 });
 
 test('tab access stays role-aware', () => {
-  assert.deepEqual(getTabRouteKeys('ADMIN'), ['dashboard', 'adminUsers', 'suppliers']);
-  assert.deepEqual(getTabRouteKeys('STAFF'), ['dashboard', 'profile']);
+  assert.deepEqual(getTabRouteKeys('ADMIN'), ['dashboard', 'adminUsers', 'suppliers', 'salesPos', 'salesHistory', 'salesReports']);
+  assert.deepEqual(getTabRouteKeys('STAFF'), ['dashboard', 'profile', 'salesPos', 'salesHistory', 'salesReports']);
   assert.equal(canAccessTab('ADMIN', 'suppliers'), true);
   assert.equal(canAccessTab('STAFF', 'suppliers'), false);
+  assert.equal(canAccessTab('ADMIN', 'salesReports'), true);
+  assert.equal(canAccessTab('STAFF', 'salesPos'), true);
 });
 
 test('stored sessions require both token and user context before verification', () => {

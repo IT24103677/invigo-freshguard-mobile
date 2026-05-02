@@ -4,8 +4,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../components/Card';
 import FormInput from '../components/FormInput';
-import Logo from '../components/Logo';
 import PrimaryButton, { GhostButton } from '../components/PrimaryButton';
+import WorkspaceHeader from '../components/WorkspaceHeader';
 import { apiUrl, changeMyPassword, getCurrentUser, uploadMyProfileAvatar } from '../api';
 import { getAuthToken, saveSession } from '../session';
 import { colors } from '../theme';
@@ -51,7 +51,7 @@ function formatDateTime(value) {
   });
 }
 
-export default function ProfileScreen({ sessionUser, setSessionUser }) {
+export default function ProfileScreen({ sessionUser, setSessionUser, onLogout }) {
   const [profile, setProfile] = useState(normaliseProfile(sessionUser || {}));
   const [refreshing, setRefreshing] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -219,18 +219,11 @@ export default function ProfileScreen({ sessionUser, setSessionUser }) {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshProfile} />}
       >
-        <View style={styles.header}>
-          <Logo />
-
-          <View style={styles.rolePill}>
-            <Ionicons
-              name="person-outline"
-              size={15}
-              color={colors.purple}
-            />
-            <Text style={styles.roleText}>{role}</Text>
-          </View>
-        </View>
+        <WorkspaceHeader
+          pillLabel="Staff Profile"
+          pillIcon="person-outline"
+          onLogout={onLogout}
+        />
 
         <View style={styles.profileTop}>
           <Pressable
@@ -405,33 +398,9 @@ const styles = StyleSheet.create({
     paddingBottom: 130,
   },
 
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  rolePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.78)',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-
-  roleText: {
-    color: colors.purple,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-
   profileTop: {
     alignItems: 'center',
-    marginTop: 36,
+    marginTop: 28,
     marginBottom: 24,
   },
 

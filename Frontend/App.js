@@ -7,6 +7,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import BottomNav from './src/components/BottomNav';
 import { getCurrentUser, setUnauthorizedHandler } from './src/api';
+import { PosCartProvider } from './src/context/posCart';
 import { clearSession, getAuthToken, getSessionUser, saveSession } from './src/session';
 import AdminUsersScreen from './src/screens/AdminUsersScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
@@ -15,6 +16,11 @@ import LandingScreen from './src/screens/LandingScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SupplierManagementScreen from './src/screens/SupplierManagementScreen';
+import SaleDetailsScreen from './src/screens/sales/SaleDetailsScreen';
+import SalesCheckoutScreen from './src/screens/sales/SalesCheckoutScreen';
+import SalesHistoryScreen from './src/screens/sales/SalesHistoryScreen';
+import SalesPosScreen from './src/screens/sales/SalesPosScreen';
+import SalesReportsScreen from './src/screens/sales/SalesReportsScreen';
 import { colors } from './src/theme';
 
 const {
@@ -79,6 +85,7 @@ function AdminTabs({ sessionUser, setSessionUser, onLogout }) {
             go={buildAppGo(navigation, 'ADMIN')}
             sessionUser={sessionUser}
             setSessionUser={setSessionUser}
+            onLogout={onLogout}
           />
         )}
       </Tab.Screen>
@@ -87,6 +94,35 @@ function AdminTabs({ sessionUser, setSessionUser, onLogout }) {
           <SupplierManagementScreen
             go={buildAppGo(navigation, 'ADMIN')}
             sessionUser={sessionUser}
+            onLogout={onLogout}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen name="salesPos">
+        {({ navigation }) => (
+          <SalesPosScreen
+            sessionUser={sessionUser}
+            onLogout={onLogout}
+            onOpenCheckout={() => navigation.navigate('SalesCheckout')}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen name="salesHistory">
+        {({ navigation }) => (
+          <SalesHistoryScreen
+            sessionUser={sessionUser}
+            onLogout={onLogout}
+            onOpenSaleDetails={(saleId) => navigation.navigate('SaleDetails', { saleId })}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen name="salesReports">
+        {({ navigation }) => (
+          <SalesReportsScreen
+            sessionUser={sessionUser}
+            onLogout={onLogout}
+            onOpenHistory={() => navigation.navigate('salesHistory')}
+            onOpenPos={() => navigation.navigate('salesPos')}
           />
         )}
       </Tab.Screen>
@@ -116,10 +152,97 @@ function StaffTabs({ sessionUser, setSessionUser, onLogout }) {
           <ProfileScreen
             sessionUser={sessionUser}
             setSessionUser={setSessionUser}
+            onLogout={onLogout}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen name="salesPos">
+        {({ navigation }) => (
+          <SalesPosScreen
+            sessionUser={sessionUser}
+            onLogout={onLogout}
+            onOpenCheckout={() => navigation.navigate('SalesCheckout')}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen name="salesHistory">
+        {({ navigation }) => (
+          <SalesHistoryScreen
+            sessionUser={sessionUser}
+            onLogout={onLogout}
+            onOpenSaleDetails={(saleId) => navigation.navigate('SaleDetails', { saleId })}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen name="salesReports">
+        {({ navigation }) => (
+          <SalesReportsScreen
+            sessionUser={sessionUser}
+            onLogout={onLogout}
+            onOpenHistory={() => navigation.navigate('salesHistory')}
+            onOpenPos={() => navigation.navigate('salesPos')}
           />
         )}
       </Tab.Screen>
     </Tab.Navigator>
+  );
+}
+
+function LoggedInNavigator({ sessionUser, setSessionUser, onLogout }) {
+  const userRole = normalizeRole(sessionUser?.role);
+
+  return (
+    <PosCartProvider>
+      <RootStack.Navigator key={userRole} screenOptions={{ headerShown: false }}>
+        {userRole === 'ADMIN' ? (
+          <RootStack.Screen name="AdminApp">
+            {() => (
+              <AdminTabs
+                sessionUser={sessionUser}
+                setSessionUser={setSessionUser}
+                onLogout={onLogout}
+              />
+            )}
+          </RootStack.Screen>
+        ) : (
+          <RootStack.Screen name="StaffApp">
+            {() => (
+              <StaffTabs
+                sessionUser={sessionUser}
+                setSessionUser={setSessionUser}
+                onLogout={onLogout}
+              />
+            )}
+          </RootStack.Screen>
+        )}
+        <RootStack.Screen name="SalesCheckout">
+          {({ navigation }) => (
+            <SalesCheckoutScreen
+              onLogout={onLogout}
+              onBack={() => navigation.goBack()}
+              onBackToPos={() => navigation.goBack()}
+              onOpenSaleDetails={(saleId, replace = false) => {
+                if (replace) {
+                  navigation.replace('SaleDetails', { saleId });
+                  return;
+                }
+                navigation.navigate('SaleDetails', { saleId });
+              }}
+            />
+          )}
+        </RootStack.Screen>
+        <RootStack.Screen name="SaleDetails">
+          {({ route, navigation }) => (
+            <SaleDetailsScreen
+              saleId={route.params?.saleId}
+              sessionUser={sessionUser}
+              onLogout={onLogout}
+              onBack={() => navigation.goBack()}
+            />
+          )}
+        </RootStack.Screen>
+      </RootStack.Navigator>
+    </PosCartProvider>
   );
 }
 
@@ -216,14 +339,22 @@ export default function App() {
             dashboard: 'admin/dashboard',
             adminUsers: 'admin/users',
             suppliers: 'admin/suppliers',
+            salesPos: 'admin/pos',
+            salesHistory: 'admin/sales',
+            salesReports: 'admin/reports',
           },
         },
         StaffApp: {
           screens: {
             dashboard: 'staff/dashboard',
             profile: 'staff/profile',
+            salesPos: 'staff/pos',
+            salesHistory: 'staff/sales',
+            salesReports: 'staff/reports',
           },
         },
+        SalesCheckout: 'sales/checkout',
+        SaleDetails: 'sales/details/:saleId',
       },
     },
   }), []);
@@ -243,29 +374,12 @@ export default function App() {
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <NavigationContainer theme={navigationTheme} linking={linking}>
         {isLoggedIn ? (
-          <RootStack.Navigator key={userRole} screenOptions={{ headerShown: false }}>
-            {userRole === 'ADMIN' ? (
-              <RootStack.Screen name="AdminApp">
-                {() => (
-                  <AdminTabs
-                    sessionUser={sessionUser}
-                    setSessionUser={setSessionUser}
-                    onLogout={handleLogout}
-                  />
-                )}
-              </RootStack.Screen>
-            ) : (
-              <RootStack.Screen name="StaffApp">
-                {() => (
-                  <StaffTabs
-                    sessionUser={sessionUser}
-                    setSessionUser={setSessionUser}
-                    onLogout={handleLogout}
-                  />
-                )}
-              </RootStack.Screen>
-            )}
-          </RootStack.Navigator>
+          <LoggedInNavigator
+            key={userRole}
+            sessionUser={sessionUser}
+            setSessionUser={setSessionUser}
+            onLogout={handleLogout}
+          />
         ) : (
           <RootStack.Navigator
             key={authEntry}
@@ -298,14 +412,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-
   loading: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.background,
   },
-
   loadingText: {
     marginTop: 12,
     color: 'rgba(15,23,42,0.55)',

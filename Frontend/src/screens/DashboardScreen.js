@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../components/Card';
+import { MAIN_BOTTOM_NAV_HEIGHT } from '../components/BottomNav';
 import Logo from '../components/Logo';
 import { getCurrentUser, getLoginHistory, getSuppliers, getUsers } from '../api';
 import { saveSession } from '../session';
@@ -74,7 +75,12 @@ function ModuleCard({ title, subtitle, icon, color, onPress }) {
   );
 }
 
-export default function DashboardScreen({ go, sessionUser, setSessionUser, onLogout }) {
+export default function DashboardScreen({
+  go,
+  sessionUser,
+  setSessionUser,
+  onLogout,
+}) {
   const [profile, setProfile] = useState(normaliseProfile(sessionUser || {}));
   const [summary, setSummary] = useState({
     userCount: 0,
@@ -261,6 +267,14 @@ export default function DashboardScreen({ go, sessionUser, setSessionUser, onLog
           </View>
 
           <View style={styles.modules}>
+            <ModuleCard
+              title="Sales & POS"
+              subtitle="Open POS, checkout flows, sales history, and report pages."
+              icon="cart-outline"
+              color={colors.emerald}
+              onPress={() => go('salesPos')}
+            />
+
             {isAdmin && (
               <ModuleCard
                 title="User Management"
@@ -329,7 +343,7 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingTop: 58,
-    paddingBottom: 120,
+    paddingBottom: MAIN_BOTTOM_NAV_HEIGHT + 72,
   },
 
   header: {

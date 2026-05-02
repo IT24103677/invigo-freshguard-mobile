@@ -3,6 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
 
+export const MAIN_BOTTOM_NAV_HEIGHT = 102;
+
 export default function BottomNav({ state, navigation, role }) {
   const isAdmin = role === 'ADMIN';
 
@@ -11,11 +13,19 @@ export default function BottomNav({ state, navigation, role }) {
         { key: 'dashboard', label: 'Home', icon: 'home-outline' },
         { key: 'adminUsers', label: 'Users', icon: 'people-outline' },
         { key: 'suppliers', label: 'Suppliers', icon: 'business-outline' },
+        { key: 'salesPos', label: 'POS', icon: 'cart-outline' },
+        { key: 'salesHistory', label: 'Sales', icon: 'receipt-outline' },
+        { key: 'salesReports', label: 'Reports', icon: 'bar-chart-outline' },
       ]
     : [
         { key: 'dashboard', label: 'Home', icon: 'home-outline' },
         { key: 'profile', label: 'Profile', icon: 'person-outline' },
+        { key: 'salesPos', label: 'POS', icon: 'cart-outline' },
+        { key: 'salesHistory', label: 'Sales', icon: 'receipt-outline' },
+        { key: 'salesReports', label: 'Reports', icon: 'bar-chart-outline' },
       ];
+
+  const compact = items.length > 4;
 
   return (
     <View style={styles.wrapper}>
@@ -27,18 +37,18 @@ export default function BottomNav({ state, navigation, role }) {
           return (
             <Pressable
               key={item.key}
-              style={styles.item}
+              style={[styles.item, compact && styles.itemCompact]}
               onPress={() => routeIndex >= 0 && navigation.navigate(item.key)}
             >
-              <View style={[styles.iconWrap, isActive && styles.activeIconWrap]}>
+              <View style={[styles.iconWrap, compact && styles.iconWrapCompact, isActive && styles.activeIconWrap]}>
                 <Ionicons
                   name={item.icon}
-                  size={21}
+                  size={compact ? 19 : 21}
                   color={isActive ? '#fff' : 'rgba(15,23,42,0.42)'}
                 />
               </View>
 
-              <Text style={[styles.label, isActive && styles.activeLabel]}>
+              <Text numberOfLines={1} style={[styles.label, compact && styles.labelCompact, isActive && styles.activeLabel]}>
                 {item.label}
               </Text>
             </Pressable>
@@ -84,12 +94,22 @@ const styles = StyleSheet.create({
     gap: 4,
   },
 
+  itemCompact: {
+    gap: 3,
+  },
+
   iconWrap: {
     width: 34,
     height: 34,
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  iconWrapCompact: {
+    width: 30,
+    height: 30,
+    borderRadius: 13,
   },
 
   activeIconWrap: {
@@ -100,6 +120,10 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     fontWeight: '900',
     color: 'rgba(15,23,42,0.42)',
+  },
+
+  labelCompact: {
+    fontSize: 8.8,
   },
 
   activeLabel: {

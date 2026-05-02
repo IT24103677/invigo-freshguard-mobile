@@ -16,6 +16,38 @@ async function parseError(response, fallback) {
   return err.message || err.error || `${fallback} (${response.status})`;
 }
 
+function normalizeSale(sale) {
+  if (!sale) return null;
+  const saleId = sale._id || sale.id || '';
+  return {
+    ...sale,
+    id: saleId,
+    _id: saleId,
+  };
+}
+
+function normalizeProduct(product) {
+  if (!product) return null;
+  const productId = product._id || product.id || '';
+  return {
+    ...product,
+    id: productId,
+    _id: productId,
+  };
+}
+
+function withQuery(path, params = {}) {
+  const query = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    query.append(key, String(value));
+  });
+
+  const queryString = query.toString();
+  return queryString ? `${path}?${queryString}` : path;
+}
+
 async function request(path, options = {}, useAuth = true) {
   const headers = { ...(options.headers || {}) };
   if (!options.skipJsonContentType && !headers['Content-Type'] && !headers['content-type']) {
@@ -189,4 +221,92 @@ export async function updateSupplier(id, supplierData) {
 export async function deleteSupplier(id) {
   const response = await request(`/admin/suppliers/${id}`, { method: 'DELETE' });
   if (!response.ok) throw new Error(await parseError(response, 'Failed to delete supplier'));
+}
+
+export async function getProducts() {
+  const response = await request('/products');
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to fetch products'));
+  const payload = await response.json();
+  return (payload.data || []).map(normalizeProduct).filter(Boolean);
+}
+
+export async function getSalesDashboardSummary(params = {}) {
+  const response = await request(withQuery('/dashboard/summary', params));
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to fetch sales dashboard summary'));
+  const payload = await response.json();
+  return {
+    ...(payload.data || {}),
+    latestActiveSale: normalizeSale(payload.data?.latestActiveSale),
+  };
+}
+
+export async function getSales(params = {}) {
+  const response = await request(withQuery('/sales', params));
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to fetch sales'));
+  const payload = await response.json();
+  return {
+    items: (payload.data || []).map(normalizeSale).filter(Boolean),
+    meta: payload.meta || null,
+  };
+}
+
+export async function getSaleById(id) {
+  const response = await request(`/sales/${id}`);
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to fetch sale'));
+  const payload = await response.json();
+  return normalizeSale(payload.data);
+}
+
+export async function createSale(payload) {
+  const response = await request('/sales', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to record sale'));
+  const data = await response.json();
+  return normalizeSale(data.data);
+}
+
+export async function updateSale(id, payload) {
+  const response = await request(`/sales/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to update sale'));
+  const data = await response.json();
+  return normalizeSale(data.data);
+}
+
+export async function voidSale(id, voidReason) {
+  const response = await request(`/sales/${id}/void`, {
+    method: 'POST',
+    body: JSON.stringify({ voidReason }),
+  });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to void sale'));
+  const data = await response.json();
+  return normalizeSale(data.data);
+}
+
+export async function uploadSaleReceipt(saleId, asset) {
+  const formData = new FormData();
+
+  if (asset?.file) {
+    formData.append('receipt', asset.file);
+  } else {
+    formData.append('receipt', {
+      uri: asset.uri,
+      name: asset.fileName || `receipt-${Date.now()}.jpg`,
+      type: asset.mimeType || 'image/jpeg',
+    });
+  }
+
+  const response = await request(`/sales/${saleId}/receipt`, {
+    method: 'POST',
+    body: formData,
+    skipJsonContentType: true,
+  });
+
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to upload sale receipt'));
+  const data = await response.json();
+  return normalizeSale(data.data);
 }

@@ -7,7 +7,7 @@ import FormInput from '../components/FormInput';
 import PrimaryButton, { GhostButton } from '../components/PrimaryButton';
 import Screen from '../components/Screen';
 import { saveSession } from '../session';
-import TopBar from '../components/TopBar';
+import WorkspaceHeader from '../components/WorkspaceHeader';
 import { colors } from '../theme';
 
 const ROLE_OPTIONS = ['ADMIN', 'STAFF'];
@@ -418,7 +418,7 @@ function UserModal({ visible, onClose, onSubmit, initialUser, loading }) {
   );
 }
 
-export default function AdminUsersScreen({ go, sessionUser, setSessionUser }) {
+export default function AdminUsersScreen({ go, sessionUser, setSessionUser, onLogout }) {
   const [activeTab, setActiveTab] = useState('users');
   const [users, setUsers] = useState([]);
   const [history, setHistory] = useState([]);
@@ -570,7 +570,11 @@ export default function AdminUsersScreen({ go, sessionUser, setSessionUser }) {
 
   return (
     <Screen scroll={false} style={{ paddingBottom: 0 }}>
-      <TopBar title="Users" rightText="Home" onRight={() => go('dashboard')} />
+      <WorkspaceHeader
+        pillLabel="Admin User Management"
+        pillIcon="people-outline"
+        onLogout={onLogout}
+      />
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} />}
