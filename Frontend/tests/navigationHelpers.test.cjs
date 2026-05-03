@@ -22,7 +22,7 @@ test('public route mapping resolves auth screens', () => {
 });
 
 test('tab access stays role-aware', () => {
-  assert.deepEqual(getTabRouteKeys('ADMIN'), ['dashboard', 'adminUsers', 'suppliers', 'products', 'batches', 'salesPos', 'salesHistory', 'salesReports', 'alerts', 'discounts']);
+  assert.deepEqual(getTabRouteKeys('ADMIN'), ['dashboard', 'adminUsers', 'suppliers', 'products', 'batches', 'salesPos', 'salesHistory', 'salesReports', 'discounts']);
   assert.deepEqual(getTabRouteKeys('STAFF'), ['dashboard', 'profile', 'salesPos', 'salesHistory', 'salesReports', 'discounts']);
   assert.equal(canAccessTab('ADMIN', 'suppliers'), true);
   assert.equal(canAccessTab('STAFF', 'suppliers'), false);
