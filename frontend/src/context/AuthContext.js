@@ -13,9 +13,14 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState({
+    id: 1,
+    username: 'admin',
+    name: 'Admin User',
+    role: 'ADMIN',
+  });
+  const [token, setToken] = useState('mock-token');
+  const [loading, setLoading] = useState(false);
 
   // Load stored auth data on app start
   useEffect(() => {

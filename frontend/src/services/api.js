@@ -128,20 +128,26 @@ export const discountsAPI = {
 
 // ========== ALERTS API ==========
 export const alertsAPI = {
-  getAll: (params) => api.get('/alerts', { params }),
-  markAsRead: (id) => api.put(`/alerts/${id}/read`),
-  generate: () => api.post('/alerts/generate'),
-  delete: (id) => api.delete(`/alerts/${id}`),
+  getAll: (params) => api.get('/dashboard/alerts', { params }),
+  markAsRead: (id) => api.put(`/dashboard/alerts/${id}/read`),
+  clearAll: () => api.delete('/dashboard/alerts/clear'),
+  generate: () => api.post('/alerts/generate'), // Keep if needed for background generation
+};
+
+// ========== DASHBOARD API ==========
+export const dashboardAPI = {
+  getSummary: () => api.get('/dashboard/summary'),
+  getAlerts: () => api.get('/dashboard/alerts'),
+  getSalesChart: () => api.get('/dashboard/charts/sales'),
+  getStockChart: () => api.get('/dashboard/charts/stock'),
 };
 
 // ========== REPORTS API ==========
 export const reportsAPI = {
-  getDashboard: () => api.get('/reports/dashboard'),
   getAll: (params) => api.get('/reports', { params }),
-  create: (data) => api.post('/reports', data),
+  generate: (data) => api.post('/reports/generate', data),
+  getById: (id) => api.get(`/reports/${id}`),
+  update: (id, data) => api.put(`/reports/${id}`, data),
   delete: (id) => api.delete(`/reports/${id}`),
-  getExpiredProducts: () => api.get('/reports/expired-products'),
-  getNearExpiry: () => api.get('/reports/near-expiry'),
-  getSalesReport: (params) => api.get('/reports/sales-report', { params }),
-  getMonthlySales: () => api.get('/reports/monthly-sales'),
+  getDownloadUrl: (id) => `${API_BASE_URL}/reports/${id}/download`,
 };

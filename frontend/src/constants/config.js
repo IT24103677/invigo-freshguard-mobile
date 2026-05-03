@@ -1,6 +1,6 @@
 // API Configuration
 // Change this to your deployed backend URL for production
-export const API_BASE_URL = 'http://172.20.10.4:5000/api'; // WiFi IP address (for physical device)
+export const API_BASE_URL = 'http://172.20.10.2:5000/api'; // WiFi IP address (for physical device)
 // export const API_BASE_URL = 'http://10.0.2.2:5000/api'; // Android emulator
 // export const API_BASE_URL = 'http://localhost:5000/api'; // iOS simulator
 // export const API_BASE_URL = 'https://your-backend.onrender.com/api'; // Production
@@ -49,12 +49,10 @@ export const EXPIRY_STATUS = {
 };
 
 export const REPORT_TYPES = [
-  { label: 'Inventory Report', value: 'INVENTORY' },
-  { label: 'Expired Products', value: 'EXPIRED' },
-  { label: 'Near Expiry', value: 'NEAR_EXPIRY' },
+  { label: 'Expired Items Report', value: 'EXPIRED' },
+  { label: 'Near-Expiry Report', value: 'NEAR_EXPIRY' },
   { label: 'Sales Report', value: 'SALES' },
-  { label: 'Low Stock', value: 'LOW_STOCK' },
-  { label: 'Discount Usage', value: 'DISCOUNT_USAGE' },
+  { label: 'Inventory Summary Report', value: 'INVENTORY_SUMMARY' },
 ];
 
 export const CATEGORIES = [

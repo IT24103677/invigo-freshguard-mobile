@@ -100,6 +100,14 @@ const SalesStack = () => (
   </Stack.Navigator>
 );
 
+// Discounts Stack
+const DiscountsStack = () => (
+  <Stack.Navigator screenOptions={screenOptions}>
+    <Stack.Screen name="DiscountList" component={DiscountListScreen} options={{ title: 'Discounts' }} />
+    <Stack.Screen name="AddDiscount" component={AddDiscountScreen} options={{ title: 'Add Discount' }} />
+  </Stack.Navigator>
+);
+
 // More Stack (Discounts, Alerts, Users, Reports, Profile)
 const MoreStack = () => (
   <Stack.Navigator screenOptions={screenOptions}>
@@ -193,6 +201,7 @@ const MainTabs = () => (
         switch (route.name) {
           case 'Dashboard': iconName = 'view-dashboard-outline'; break;
           case 'Products': iconName = 'package-variant-closed'; break;
+          case 'Discounts': iconName = 'tag-outline'; break;
           case 'Inventory': iconName = 'warehouse'; break;
           case 'Sales': iconName = 'cart-outline'; break;
           case 'More': iconName = 'dots-horizontal-circle-outline'; break;
@@ -204,6 +213,7 @@ const MainTabs = () => (
   >
     <Tab.Screen name="Dashboard" component={DashboardStack} />
     <Tab.Screen name="Products" component={ProductsStack} />
+    <Tab.Screen name="Discounts" component={DiscountsStack} />
     <Tab.Screen name="Inventory" component={InventoryStack} />
     <Tab.Screen name="Sales" component={SalesStack} />
     <Tab.Screen name="More" component={MoreStack} />
@@ -212,15 +222,9 @@ const MainTabs = () => (
 
 // Main App Navigator
 const AppNavigator = () => {
-  const { isAuthenticated, loading } = useAuth();
-
-  if (loading) {
-    return <LoadingSpinner message="Loading INVIGO..." />;
-  }
-
   return (
     <NavigationContainer>
-      {isAuthenticated ? <MainTabs /> : <AuthStack />}
+      <MainTabs />
     </NavigationContainer>
   );
 };

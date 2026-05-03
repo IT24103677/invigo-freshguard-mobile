@@ -46,26 +46,15 @@ const EditProductScreen = ({ route, navigation }) => {
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
       <TextInput label="Product Name *" value={form.productName} onChangeText={v => update('productName', v)}
         mode="outlined" style={styles.input} outlineColor={COLORS.border} activeOutlineColor={COLORS.primary} />
-      <TextInput label="Product Code *" value={form.productCode} onChangeText={v => update('productCode', v)}
+      
+      <TextInput label="Product Category" value={form.mainCategory} onChangeText={v => update('mainCategory', v)}
         mode="outlined" style={styles.input} outlineColor={COLORS.border} activeOutlineColor={COLORS.primary} />
-      <TextInput label="Main Category" value={form.mainCategory} onChangeText={v => update('mainCategory', v)}
-        mode="outlined" style={styles.input} outlineColor={COLORS.border} activeOutlineColor={COLORS.primary} />
-      <TextInput label="Sub Category" value={form.subCategory} onChangeText={v => update('subCategory', v)}
-        mode="outlined" style={styles.input} outlineColor={COLORS.border} activeOutlineColor={COLORS.primary} />
-      <TextInput label="Item Type" value={form.itemType} onChangeText={v => update('itemType', v)}
-        mode="outlined" style={styles.input} outlineColor={COLORS.border} activeOutlineColor={COLORS.primary} />
-      <TextInput label="Supplier" value={form.supplier} onChangeText={v => update('supplier', v)}
-        mode="outlined" style={styles.input} outlineColor={COLORS.border} activeOutlineColor={COLORS.primary} />
-      <TextInput label="Cost Price" value={form.costPrice} onChangeText={v => update('costPrice', v)}
+      
+      <TextInput label="Cost Price ($)" value={form.costPrice} onChangeText={v => update('costPrice', v)}
         mode="outlined" style={styles.input} keyboardType="decimal-pad" outlineColor={COLORS.border} activeOutlineColor={COLORS.primary} />
-      <TextInput label="Selling Price" value={form.sellingPrice} onChangeText={v => update('sellingPrice', v)}
+      
+      <TextInput label="Selling Price ($)" value={form.sellingPrice} onChangeText={v => update('sellingPrice', v)}
         mode="outlined" style={styles.input} keyboardType="decimal-pad" outlineColor={COLORS.border} activeOutlineColor={COLORS.primary} />
-      <TextInput label="Description" value={form.description} onChangeText={v => update('description', v)}
-        mode="outlined" style={styles.input} multiline outlineColor={COLORS.border} activeOutlineColor={COLORS.primary} />
-      <TextInput label="Barcode" value={form.barcode} onChangeText={v => update('barcode', v)}
-        mode="outlined" style={styles.input} outlineColor={COLORS.border} activeOutlineColor={COLORS.primary} />
-      <TextInput label="Reorder Level" value={form.reorderLevel} onChangeText={v => update('reorderLevel', v)}
-        mode="outlined" style={styles.input} keyboardType="number-pad" outlineColor={COLORS.border} activeOutlineColor={COLORS.primary} />
 
       <Button mode="contained" onPress={handleSubmit} loading={loading} disabled={loading}
         style={styles.btn} buttonColor={COLORS.primary} contentStyle={{ paddingVertical: 6 }}>
