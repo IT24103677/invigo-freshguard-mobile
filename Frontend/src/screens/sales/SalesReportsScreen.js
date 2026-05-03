@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   Pressable,
   RefreshControl,
@@ -49,6 +50,16 @@ const TYPE_META = Object.fromEntries(REPORT_TYPES.map((t) => [t.value, t]));
 const VISIBILITY_OPTIONS = [
   { value: 'ADMIN', label: 'Admin Only' },
   { value: 'ALL',   label: 'All Staff'  },
+];
+
+const REPORT_ATTACHMENT_TYPES = [
+  'image/*',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/csv',
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -121,6 +132,30 @@ function buildReportHtml(item) {
     ${bodyHtml}
     <div class="footer">Invigo — Freshguard Inventory System · Report snapshot generated at time of creation.</div>
     </body></html>`;
+}
+
+function isImageAttachment(mimeType) {
+  return String(mimeType || '').toLowerCase().startsWith('image/');
+}
+
+async function pickReportAttachment() {
+  const result = await DocumentPicker.getDocumentAsync({
+    type: REPORT_ATTACHMENT_TYPES,
+    copyToCacheDirectory: true,
+  });
+
+  if (result.canceled || !result.assets?.length) {
+    return null;
+  }
+
+  const file = result.assets[0];
+
+  return {
+    uri: file.uri,
+    name: file.name,
+    mimeType: file.mimeType || file.type || 'application/octet-stream',
+    file: file.file || null,
+  };
 }
 
 async function exportReportPdf(item) {
@@ -239,6 +274,22 @@ function ReportCard({ item, isAdmin, onEdit, onDelete, onExport, onAttach, onRem
         By {item.createdByName || 'Admin'} · {fmtDate(item.createdAt)}
       </Text>
 
+      {hasAttachment ? (
+        <View style={styles.attachmentPreviewWrap}>
+          <View style={styles.attachmentFileRow}>
+            <Ionicons name="document-attach-outline" size={18} color="#7C3AED" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.attachmentPreviewName} numberOfLines={1}>
+                {item.attachmentOriginalName || 'Attached file'}
+              </Text>
+              <Text style={styles.attachmentPreviewMeta} numberOfLines={1}>
+                {item.attachmentContentType || 'Document attachment'}
+              </Text>
+            </View>
+          </View>
+        </View>
+      ) : null}
+
       {/* Action row */}
       <View style={styles.cardActions}>
         <TouchableOpacity style={styles.cardActionBtn} onPress={onExport}>
@@ -323,13 +374,41 @@ function GenerateModal({ visible, onClose, onGenerate, loading }) {
   const [title,      setTitle]      = useState('');
   const [reportType, setReportType] = useState('');
   const [visibility, setVisibility] = useState('ADMIN');
+  const [attachment, setAttachment] = useState(null);
 
-  function handleClose() { setTitle(''); setReportType(''); setVisibility('ADMIN'); onClose(); }
+  function resetForm() {
+    setTitle('');
+    setReportType('');
+    setVisibility('ADMIN');
+    setAttachment(null);
+  }
+
+  React.useEffect(() => {
+    if (!visible) {
+      resetForm();
+    }
+  }, [visible]);
+
+  function handleClose() {
+    resetForm();
+    onClose();
+  }
+
+  async function handlePickAttachment() {
+    try {
+      const file = await pickReportAttachment();
+      if (file) {
+        setAttachment(file);
+      }
+    } catch (error) {
+      Alert.alert('Attachment failed', error.message || 'Could not pick the attachment right now.');
+    }
+  }
 
   function handleSubmit() {
     if (!title.trim()) return Alert.alert('Required', 'Please enter a report title.');
     if (!reportType)   return Alert.alert('Required', 'Please select a report type.');
-    onGenerate({ reportTitle: title.trim(), reportType, visibility });
+    onGenerate({ reportTitle: title.trim(), reportType, visibility, attachment });
   }
 
   return (
@@ -362,6 +441,59 @@ function GenerateModal({ visible, onClose, onGenerate, loading }) {
 
         <Text style={styles.fieldLabel}>Visibility</Text>
         <VisibilityField value={visibility} onChange={setVisibility} />
+
+        <Text style={styles.fieldLabel}>Attachment (Optional)</Text>
+        <View style={styles.modalAttachmentCard}>
+          <Text style={styles.modalAttachmentBody}>
+            {attachment
+              ? 'This file will upload immediately after the report is created.'
+              : 'Add an optional image or document if this report needs proof, a screenshot, or a supporting file.'}
+          </Text>
+
+          <View style={styles.modalAttachmentActions}>
+            <Pressable onPress={handlePickAttachment} style={styles.modalAttachmentBtn}>
+              <Ionicons name={attachment ? 'attach-outline' : 'add-circle-outline'} size={15} color={colors.purple} />
+              <Text style={styles.modalAttachmentBtnText}>
+                {attachment ? 'Replace File' : 'Attach File'}
+              </Text>
+            </Pressable>
+
+            {attachment ? (
+              <Pressable onPress={() => setAttachment(null)} style={styles.modalAttachmentRemoveBtn}>
+                <Text style={styles.modalAttachmentRemoveText}>Remove</Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          {attachment ? (
+            <View style={styles.modalAttachmentPreview}>
+              {isImageAttachment(attachment.mimeType) ? (
+                <Image source={{ uri: attachment.uri }} style={styles.modalAttachmentImage} resizeMode="cover" />
+              ) : (
+                <View style={styles.attachmentFileRow}>
+                  <Ionicons name="document-attach-outline" size={18} color="#7C3AED" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.attachmentPreviewName} numberOfLines={1}>
+                      {attachment.name || 'Selected file'}
+                    </Text>
+                    <Text style={styles.attachmentPreviewMeta} numberOfLines={1}>
+                      {attachment.mimeType || 'Document attachment'}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {isImageAttachment(attachment.mimeType) ? (
+                <View style={styles.attachmentPreviewCaption}>
+                  <Text style={styles.attachmentPreviewName} numberOfLines={1}>
+                    {attachment.name || 'Selected image'}
+                  </Text>
+                  <Text style={styles.attachmentPreviewMeta}>Image selected</Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
 
         <Pressable
           onPress={handleSubmit}
@@ -466,9 +598,22 @@ export default function SalesReportsScreen({ go, sessionUser, onLogout, onOpenHi
 
   // ── Generate ──────────────────────────────────────────────────────────────
   async function handleGenerate(payload) {
+    const { attachment, ...reportPayload } = payload;
     setGenLoading(true);
     try {
-      const created = await createReport(payload);
+      let created = await createReport(reportPayload);
+
+      if (attachment) {
+        try {
+          created = await uploadReportAttachment(created.id, attachment);
+        } catch (attachmentError) {
+          Alert.alert(
+            'Report Created',
+            attachmentError.message || 'The report was created, but the attachment could not be uploaded.'
+          );
+        }
+      }
+
       setReports((prev) => [created, ...prev]);
       setGenOpen(false);
       setActiveTab('reports');
@@ -497,23 +642,10 @@ export default function SalesReportsScreen({ go, sessionUser, onLogout, onOpenHi
   // ── Attach file ───────────────────────────────────────────────────────────
   async function handleAttach(reportId) {
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['image/*', 'application/pdf',
-               'application/msword',
-               'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-               'application/vnd.ms-excel',
-               'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-               'text/csv'],
-        copyToCacheDirectory: true,
-      });
-      if (result.canceled || !result.assets?.length) return;
-      const file = result.assets[0];
+      const file = await pickReportAttachment();
+      if (!file) return;
       setAttachLoading(true);
-      const updated = await uploadReportAttachment(reportId, {
-        uri:      file.uri,
-        name:     file.name,
-        mimeType: file.mimeType,
-      });
+      const updated = await uploadReportAttachment(reportId, file);
       setReports((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
     } catch (e) {
       Alert.alert('Upload failed', e.message || 'Could not attach file.');
@@ -806,6 +938,12 @@ const styles = StyleSheet.create({
   attachBadge:     { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: '#F5F3FF', maxWidth: 160 },
   attachBadgeText: { fontSize: 10, fontWeight: '800', color: '#7C3AED', flexShrink: 1 },
   reportFooter:    { color: 'rgba(15,23,42,0.38)', fontSize: 11, fontWeight: '700', marginTop: 8 },
+  attachmentPreviewWrap: { marginTop: 12, borderRadius: 14, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.78)', borderWidth: 1, borderColor: 'rgba(15,23,42,0.08)' },
+  attachmentPreviewImage: { width: '100%', height: 148, backgroundColor: 'rgba(15,23,42,0.06)' },
+  attachmentPreviewCaption: { paddingHorizontal: 12, paddingVertical: 10, gap: 2 },
+  attachmentFileRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 12 },
+  attachmentPreviewName: { fontSize: 12, fontWeight: '800', color: colors.slate },
+  attachmentPreviewMeta: { fontSize: 11, fontWeight: '700', color: 'rgba(15,23,42,0.45)' },
   cardActions:     { flexDirection: 'row', gap: 6, marginTop: 12, flexWrap: 'wrap' },
   cardActionBtn:   { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.6)', borderWidth: 1, borderColor: 'rgba(15,23,42,0.08)' },
   cardActionText:  { fontSize: 12, fontWeight: '800', color: colors.slate },
@@ -830,6 +968,15 @@ const styles = StyleSheet.create({
   visChipActive: { backgroundColor: colors.slate, borderColor: colors.slate },
   visChipText:   { fontWeight: '800', fontSize: 13, color: 'rgba(15,23,42,0.55)' },
   visChipTextActive: { color: '#fff' },
+  modalAttachmentCard: { borderWidth: 1, borderColor: 'rgba(15,23,42,0.1)', backgroundColor: 'rgba(255,255,255,0.72)', borderRadius: 16, padding: 14, marginBottom: 18, gap: 10 },
+  modalAttachmentBody: { color: 'rgba(15,23,42,0.55)', fontSize: 12, lineHeight: 18, fontWeight: '700' },
+  modalAttachmentActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  modalAttachmentBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: '#F5F3FF', borderWidth: 1, borderColor: 'rgba(124,58,237,0.18)' },
+  modalAttachmentBtnText: { fontSize: 12, fontWeight: '800', color: colors.purple },
+  modalAttachmentRemoveBtn: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: 'rgba(220,38,38,0.12)' },
+  modalAttachmentRemoveText: { fontSize: 12, fontWeight: '800', color: colors.danger },
+  modalAttachmentPreview: { borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.86)', borderWidth: 1, borderColor: 'rgba(15,23,42,0.08)' },
+  modalAttachmentImage: { width: '100%', height: 132, backgroundColor: 'rgba(15,23,42,0.06)' },
   generateBtn:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.purple, borderRadius: 18, paddingVertical: 15 },
   generateBtnText: { color: '#fff', fontWeight: '900', fontSize: 15 },
 });

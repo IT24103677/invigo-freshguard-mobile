@@ -13,14 +13,17 @@ function buildCheckoutDraft() {
 }
 
 function buildCartItem(product) {
+  const baseSellingPrice = Number(product.baseSellingPrice ?? product.sellingPrice ?? 0);
+  const activeDiscountPercent = Number(product.activeDiscountPercent || 0);
+
   return {
     productId: product._id || product.id,
     productName: product.name,
     category: product.category,
     imageUrl: product.imageUrl || '',
-    unitPrice: Number(product.sellingPrice || 0),
+    unitPrice: baseSellingPrice,
     quantity: 1,
-    discountRate: 0,
+    discountRate: activeDiscountPercent,
   };
 }
 
@@ -97,6 +100,11 @@ export function PosCartProvider({ children }) {
     setCart([]);
   }
 
+  function clearBill() {
+    setCart([]);
+    setCheckoutDraftState(buildCheckoutDraft());
+  }
+
   const value = {
     cart,
     checkoutDraft,
@@ -109,6 +117,7 @@ export function PosCartProvider({ children }) {
     setCheckoutDraft,
     resetCheckoutDraft,
     clearCart,
+    clearBill,
   };
 
   return (

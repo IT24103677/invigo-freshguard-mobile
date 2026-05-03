@@ -44,6 +44,11 @@ function normalizeProduct(raw) {
     unitType: raw?.unitType || 'piece',
     buyingPrice: raw?.buyingPrice != null ? String(raw.buyingPrice) : '',
     sellingPrice: raw?.sellingPrice != null ? String(raw.sellingPrice) : '',
+    baseSellingPrice: Number(raw?.baseSellingPrice ?? raw?.sellingPrice ?? 0),
+    discountedSellingPrice: Number(raw?.discountedSellingPrice ?? raw?.sellingPrice ?? 0),
+    activeDiscountPercent: Number(raw?.activeDiscountPercent || 0),
+    hasActiveDiscount: Boolean(raw?.hasActiveDiscount),
+    nextSellableBatchNumber: raw?.nextSellableBatchNumber || null,
     imageFileId: raw?.imageFileId || null,
     imageUpdatedAt: raw?.imageUpdatedAt || null,
     sellableUnits: raw?.sellableUnits ?? 0,
@@ -138,6 +143,10 @@ function ProductImage({ product, size = 52 }) {
 function ProductCard({ product, onEdit, onDelete, isAdmin }) {
   const sColor = stockColor(product.sellableUnits);
   const expiry = expiryLabel(product.nearestExpiryDate);
+  const baseSellingPrice = Number(product.baseSellingPrice ?? product.sellingPrice ?? 0);
+  const discountedSellingPrice = Number(product.discountedSellingPrice ?? baseSellingPrice);
+  const activeDiscountPercent = Number(product.activeDiscountPercent || 0);
+  const hasActiveDiscount = activeDiscountPercent > 0;
 
   return (
     <Card style={styles.productCard}>
@@ -159,7 +168,15 @@ function ProductCard({ product, onEdit, onDelete, isAdmin }) {
         </View>
         <View style={styles.infoBox}>
           <Text style={styles.infoLabel}>Selling</Text>
-          <Text style={styles.infoValue}>Rs {Number(product.sellingPrice).toFixed(2)}</Text>
+          <Text style={styles.infoValue}>
+            Rs {(hasActiveDiscount ? discountedSellingPrice : baseSellingPrice).toFixed(2)}
+          </Text>
+          {hasActiveDiscount ? (
+            <View style={styles.priceMetaRow}>
+              <Text style={styles.infoValueSub}>Was Rs {baseSellingPrice.toFixed(2)}</Text>
+              <Text style={styles.discountPill}>{activeDiscountPercent}% OFF</Text>
+            </View>
+          ) : null}
         </View>
         <View style={styles.infoBox}>
           <Text style={styles.infoLabel}>Batches</Text>
@@ -593,6 +610,9 @@ const styles = StyleSheet.create({
   infoBox: { flex: 1, backgroundColor: 'rgba(15,23,42,0.04)', borderRadius: 18, padding: 11, borderWidth: 1, borderColor: colors.border },
   infoLabel: { color: 'rgba(15,23,42,0.42)', fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 },
   infoValue: { color: colors.slate, fontSize: 16, fontWeight: '900', marginTop: 3 },
+  priceMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 },
+  infoValueSub: { color: 'rgba(15,23,42,0.45)', fontSize: 10, fontWeight: '800', textDecorationLine: 'line-through' },
+  discountPill: { overflow: 'hidden', color: colors.danger, backgroundColor: 'rgba(239,68,68,0.10)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, fontWeight: '900', fontSize: 10 },
   tagsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   tag: { overflow: 'hidden', color: 'rgba(15,23,42,0.62)', backgroundColor: 'rgba(15,23,42,0.06)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, fontWeight: '900', fontSize: 11 },
   actionRow: { flexDirection: 'row', gap: 8 },

@@ -13,6 +13,8 @@ export default function SalesCartItem({
   const gross = item.quantity * item.unitPrice;
   const discount = gross * (item.discountRate / 100);
   const lineTotal = +(gross - discount).toFixed(2);
+  const discountedUnitPrice = +(item.unitPrice - (item.unitPrice * (item.discountRate / 100))).toFixed(2);
+  const hasDiscount = item.discountRate > 0;
 
   return (
     <View style={styles.container}>
@@ -36,7 +38,19 @@ export default function SalesCartItem({
           </Pressable>
         </View>
 
-        <Text style={styles.price}>Rs. {item.unitPrice.toFixed(2)} / unit</Text>
+        {hasDiscount ? (
+          <View style={styles.priceBlock}>
+            <View style={styles.priceRow}>
+              <Text style={styles.discountedPrice}>Rs. {discountedUnitPrice.toFixed(2)} / unit</Text>
+              <View style={styles.discountBadge}>
+                <Text style={styles.discountBadgeText}>{item.discountRate}% OFF</Text>
+              </View>
+            </View>
+            <Text style={styles.originalPrice}>Was Rs. {item.unitPrice.toFixed(2)} / unit</Text>
+          </View>
+        ) : (
+          <Text style={styles.price}>Rs. {item.unitPrice.toFixed(2)} / unit</Text>
+        )}
 
         <View style={styles.controls}>
           <View style={styles.stepper}>
@@ -120,6 +134,36 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 12,
     color: salesColors.textMuted,
+  },
+  priceBlock: {
+    gap: 2,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  discountedPrice: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: salesColors.primary,
+  },
+  originalPrice: {
+    fontSize: 11,
+    color: salesColors.textMuted,
+    textDecorationLine: 'line-through',
+  },
+  discountBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: `${salesColors.secondaryContainer}88`,
+  },
+  discountBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: salesColors.secondary,
   },
   controls: {
     flexDirection: 'row',

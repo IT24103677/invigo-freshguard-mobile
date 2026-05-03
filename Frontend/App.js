@@ -18,7 +18,6 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import SupplierManagementScreen from './src/screens/SupplierManagementScreen';
 import ProductManagementScreen from './src/screens/ProductManagementScreen';
 import BatchManagementScreen from './src/screens/BatchManagementScreen';
-import AlertsScreen from './src/screens/AlertsScreen';
 import DiscountsScreen from './src/screens/DiscountsScreen';
 import SaleDetailsScreen from './src/screens/sales/SaleDetailsScreen';
 import SalesCheckoutScreen from './src/screens/sales/SalesCheckoutScreen';
@@ -148,15 +147,6 @@ function AdminTabs({ sessionUser, setSessionUser, onLogout }) {
             onLogout={onLogout}
             onOpenHistory={() => navigation.navigate('salesHistory')}
             onOpenPos={() => navigation.navigate('salesPos')}
-          />
-        )}
-      </Tab.Screen>
-      <Tab.Screen name="alerts">
-        {({ navigation }) => (
-          <AlertsScreen
-            go={buildAppGo(navigation, 'ADMIN')}
-            sessionUser={sessionUser}
-            onLogout={onLogout}
           />
         )}
       </Tab.Screen>
@@ -400,7 +390,6 @@ export default function App() {
             salesPos: 'admin/pos',
             salesHistory: 'admin/sales',
             salesReports: 'admin/reports',
-            alerts: 'admin/alerts',
             discounts: 'admin/discounts',
           },
         },

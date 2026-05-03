@@ -565,11 +565,15 @@ export async function deleteReport(id) {
 export async function uploadReportAttachment(id, file) {
   // file: { uri, name, mimeType } from expo-document-picker or expo-image-picker
   const formData = new FormData();
-  formData.append('attachment', {
-    uri:  file.uri,
-    name: file.name || file.fileName || `attachment-${Date.now()}`,
-    type: file.mimeType || file.type || 'application/octet-stream',
-  });
+  if (file?.file) {
+    formData.append('attachment', file.file);
+  } else {
+    formData.append('attachment', {
+      uri:  file.uri,
+      name: file.name || file.fileName || `attachment-${Date.now()}`,
+      type: file.mimeType || file.type || 'application/octet-stream',
+    });
+  }
   const response = await request(`/reports/${id}/attachment`, {
     method: 'POST',
     body:   formData,

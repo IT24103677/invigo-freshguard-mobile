@@ -20,7 +20,6 @@ const ADMIN_ITEMS = [
   { key: 'salesHistory', label: 'Sales History',    icon: 'receipt-outline',    color: colors.purple },
   { key: 'salesReports', label: 'Reports',          icon: 'bar-chart-outline',  color: colors.magenta },
   { key: 'adminUsers',   label: 'User Management',  icon: 'people-outline',     color: colors.slate },
-  { key: 'alerts',      label: 'Alerts',           icon: 'alert-circle-outline', color: colors.danger },
   { key: 'discounts',   label: 'Discounts',        icon: 'pricetag-outline',   color: colors.purple },
 ];
 

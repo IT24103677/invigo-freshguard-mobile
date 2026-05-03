@@ -14,7 +14,7 @@ function getPublicRouteName(routeKey) {
 
 function getTabRouteKeys(role) {
   return normalizeRole(role) === 'ADMIN'
-    ? ['dashboard', 'adminUsers', 'suppliers', 'products', 'batches', 'salesPos', 'salesHistory', 'salesReports', 'alerts', 'discounts']
+    ? ['dashboard', 'adminUsers', 'suppliers', 'products', 'batches', 'salesPos', 'salesHistory', 'salesReports', 'discounts']
     : ['dashboard', 'profile', 'salesPos', 'salesHistory', 'salesReports', 'discounts'];
 }
 

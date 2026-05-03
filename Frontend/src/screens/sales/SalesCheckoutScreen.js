@@ -39,8 +39,7 @@ export default function SalesCheckoutScreen({ onLogout, onBack, onBackToPos, onO
     updateDiscount,
     removeProduct,
     setCheckoutDraft,
-    resetCheckoutDraft,
-    clearCart,
+    clearBill,
   } = usePosCart();
   const [submitting, setSubmitting] = useState(false);
   const [refreshingStock, setRefreshingStock] = useState(false);
@@ -109,8 +108,7 @@ export default function SalesCheckoutScreen({ onLogout, onBack, onBackToPos, onO
   );
 
   function resetCheckoutState() {
-    clearCart();
-    resetCheckoutDraft();
+    clearBill();
     setClientRequestKey(generateClientRequestKey());
     setErrorMsg('');
   }
@@ -142,16 +140,71 @@ export default function SalesCheckoutScreen({ onLogout, onBack, onBackToPos, onO
     setErrorMsg('');
   }
 
-  function clearBill() {
+  function handleClearBill() {
+    const runClear = () => {
+      resetCheckoutState();
+      onBackToPos();
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = typeof globalThis.confirm === 'function'
+        ? globalThis.confirm('Remove all items from this bill?')
+        : true;
+
+      if (confirmed) {
+        runClear();
+      }
+      return;
+    }
+
     Alert.alert('Clear Bill', 'Remove all items from this bill?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Clear Bill',
         style: 'destructive',
-        onPress: () => {
-          resetCheckoutState();
-          onBackToPos();
-        },
+        onPress: runClear,
+      },
+    ]);
+  }
+
+  function handleSaleRecordedSuccess(sale, receiptUploadFailed = false) {
+    const title = receiptUploadFailed ? 'Sale Recorded - Receipt Pending' : 'Sale Recorded';
+    const summary = `${sale.saleGroupId}\nTotal: ${formatMoney(sale.grandTotal)}\nChange: ${formatMoney(sale.changeGiven || 0)}`;
+
+    resetCheckoutState();
+
+    if (Platform.OS === 'web') {
+      const prompt = [
+        receiptUploadFailed
+          ? 'The sale was recorded, but the receipt still needs to upload.'
+          : 'The sale was recorded successfully.',
+        '',
+        summary,
+        '',
+        'Press OK to open the sale details or Cancel to return to POS.',
+      ].join('\n');
+
+      const openDetails = typeof globalThis.confirm === 'function'
+        ? globalThis.confirm(prompt)
+        : false;
+
+      if (openDetails) {
+        onOpenSaleDetails(sale.id, true);
+        return;
+      }
+
+      onBackToPos();
+      return;
+    }
+
+    Alert.alert(title, summary, [
+      {
+        text: 'Open Details',
+        onPress: () => onOpenSaleDetails(sale.id, true),
+      },
+      {
+        text: 'Back to POS',
+        onPress: () => onBackToPos(),
       },
     ]);
   }
@@ -236,6 +289,7 @@ export default function SalesCheckoutScreen({ onLogout, onBack, onBackToPos, onO
         items: cart.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
+          unitPriceOverride: item.unitPrice,
           discountRateApplied: item.discountRate,
         })),
       });
@@ -249,26 +303,7 @@ export default function SalesCheckoutScreen({ onLogout, onBack, onBackToPos, onO
         }
       }
 
-      Alert.alert(
-        receiptUploadFailed ? 'Sale Recorded - Receipt Pending' : 'Sale Recorded',
-        `${sale.saleGroupId}\nTotal: ${formatMoney(sale.grandTotal)}\nChange: ${formatMoney(sale.changeGiven || 0)}`,
-        [
-          {
-            text: 'Open Details',
-            onPress: () => {
-              resetCheckoutState();
-              onOpenSaleDetails(sale.id, true);
-            },
-          },
-          {
-            text: 'Back to POS',
-            onPress: () => {
-              resetCheckoutState();
-              onBackToPos();
-            },
-          },
-        ]
-      );
+      handleSaleRecordedSuccess(sale, receiptUploadFailed);
     } catch (error) {
       setErrorMsg(error.message || 'Failed to record sale.');
     } finally {
@@ -332,8 +367,8 @@ export default function SalesCheckoutScreen({ onLogout, onBack, onBackToPos, onO
               <MaterialCommunityIcons name="playlist-plus" size={18} color={salesColors.primary} />
               <Text style={styles.secondaryBtnText}>Add More Items</Text>
             </Pressable>
-            <Pressable onPress={clearBill} style={styles.dangerBtn}>
-              <MaterialCommunityIcons name="trash-outline" size={18} color={colors.danger} />
+            <Pressable onPress={handleClearBill} style={styles.dangerBtn}>
+              <MaterialCommunityIcons name="trash-can-outline" size={18} color={colors.danger} />
               <Text style={styles.dangerBtnText}>Clear Bill</Text>
             </Pressable>
           </View>
@@ -368,11 +403,11 @@ export default function SalesCheckoutScreen({ onLogout, onBack, onBackToPos, onO
 
           <Text style={styles.sectionEyebrow}>Customer Details</Text>
           <InputField icon="account-outline" value={customerName} placeholder="Customer name (optional)" onChangeText={(value) => setCheckoutDraft({ customerName: value })} />
-          <InputField icon="mail-outline" value={customerEmail} placeholder="Customer email (optional)" onChangeText={(value) => setCheckoutDraft({ customerEmail: value })} keyboardType="email-address" autoCapitalize="none" />
+          <InputField icon="email-outline" value={customerEmail} placeholder="Customer email (optional)" onChangeText={(value) => setCheckoutDraft({ customerEmail: value })} keyboardType="email-address" autoCapitalize="none" />
           {emailInvalid ? <Text style={styles.errorHint}>Enter a valid email address or clear this field.</Text> : null}
 
           <Text style={styles.sectionEyebrow}>Payment and Notes</Text>
-          <InputField icon="cash-outline" value={amountGiven} placeholder="Amount given *" onChangeText={(value) => setCheckoutDraft({ amountGiven: value })} keyboardType="decimal-pad" />
+          <InputField icon="cash" value={amountGiven} placeholder="Amount given *" onChangeText={(value) => setCheckoutDraft({ amountGiven: value })} keyboardType="decimal-pad" />
           <InputField icon="note-text-outline" value={notes} placeholder="Notes (optional)" onChangeText={(value) => setCheckoutDraft({ notes: value })} multiline />
 
           <Text style={styles.sectionEyebrow}>Receipt Attachment</Text>

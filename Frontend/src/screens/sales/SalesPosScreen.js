@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -52,7 +53,7 @@ export default function SalesPosScreen({
     decrementProduct,
     updateQuantity,
     removeProduct,
-    clearCart,
+    clearBill,
   } = usePosCart();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -147,9 +148,22 @@ export default function SalesPosScreen({
   const hasSearchQuery = searchQuery.trim().length > 0;
 
   function handleClearCurrentBill() {
+    const runClear = () => clearBill();
+
+    if (Platform.OS === 'web') {
+      const confirmed = typeof globalThis.confirm === 'function'
+        ? globalThis.confirm('Remove all selected products from this bill?')
+        : true;
+
+      if (confirmed) {
+        runClear();
+      }
+      return;
+    }
+
     Alert.alert('Clear Current Bill', 'Remove all selected products from this bill?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear Bill', style: 'destructive', onPress: clearCart },
+      { text: 'Clear Bill', style: 'destructive', onPress: runClear },
     ]);
   }
 
@@ -319,6 +333,12 @@ export default function SalesPosScreen({
               const stockStatus = getStockStatus(product);
               const expiryStatus = getExpiryStatus(product);
               const sellableUnits = Number(product.sellableUnits || 0);
+              const baseSellingPrice = Number(product.baseSellingPrice ?? product.sellingPrice ?? 0);
+              const activeDiscountPercent = Number(product.activeDiscountPercent || 0);
+              const discountedSellingPrice = Number(
+                product.discountedSellingPrice ?? baseSellingPrice
+              );
+              const hasActiveDiscount = activeDiscountPercent > 0;
               const inCart = cart.find((item) => item.productId === product._id);
               const isUnavailable = sellableUnits <= 0;
               const maxInCartReached = Boolean(inCart && inCart.quantity >= sellableUnits && sellableUnits > 0);
@@ -371,6 +391,12 @@ export default function SalesPosScreen({
                           <Text style={styles.productMetaTagText}>SKU {product.sku}</Text>
                         </View>
                       ) : null}
+                      {hasActiveDiscount ? (
+                        <View style={styles.productDiscountTag}>
+                          <MaterialCommunityIcons name="sale" size={12} color={salesColors.terracotta} />
+                          <Text style={styles.productDiscountTagText}>{activeDiscountPercent}% OFF</Text>
+                        </View>
+                      ) : null}
                     </View>
 
                     <View style={styles.inventoryMetaRow}>
@@ -389,9 +415,19 @@ export default function SalesPosScreen({
                     </View>
 
                     <View style={styles.productFooter}>
-                      <Text style={styles.productPrice}>
-                        Rs. {Number(product.sellingPrice || 0).toFixed(2)}
-                      </Text>
+                      <View style={styles.productPriceWrap}>
+                        <Text style={styles.productPrice}>
+                          Rs. {(hasActiveDiscount ? discountedSellingPrice : baseSellingPrice).toFixed(2)}
+                        </Text>
+                        {hasActiveDiscount ? (
+                          <View style={styles.productPriceMetaRow}>
+                            <Text style={styles.productOriginalPrice}>
+                              Rs. {baseSellingPrice.toFixed(2)}
+                            </Text>
+                            <Text style={styles.productDiscountNote}>{activeDiscountPercent}% OFF</Text>
+                          </View>
+                        ) : null}
+                      </View>
 
                       {inCart ? (
                         <View style={styles.productControlWrap}>
@@ -759,6 +795,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: salesColors.primary,
   },
+  productDiscountTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: `${salesColors.tertiaryContainer}66`,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  productDiscountTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: salesColors.terracotta,
+  },
   inventoryMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -791,10 +841,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
+  productPriceWrap: {
+    gap: 2,
+  },
   productPrice: {
     fontSize: 18,
     fontWeight: '800',
     color: salesColors.primary,
+  },
+  productPriceMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  productOriginalPrice: {
+    fontSize: 11,
+    color: salesColors.textMuted,
+    textDecorationLine: 'line-through',
+  },
+  productDiscountNote: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: salesColors.terracotta,
   },
   productControlWrap: {
     alignItems: 'flex-end',
