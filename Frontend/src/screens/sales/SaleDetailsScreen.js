@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -76,6 +77,15 @@ export default function SaleDetailsScreen({ saleId, sessionUser, onLogout, onBac
     loadSale();
   }, [loadSale]);
 
+  async function ensurePhotoLibraryAccess() {
+    if (Platform.OS === 'web') {
+      return true;
+    }
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    return permission.granted;
+  }
+
   async function pickReceipt(source) {
     if (source === 'camera') {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
@@ -94,8 +104,8 @@ export default function SaleDetailsScreen({ saleId, sessionUser, onLogout, onBac
       return;
     }
 
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
+    const allowed = await ensurePhotoLibraryAccess();
+    if (!allowed) {
       setErrorMsg('Gallery permission is required to attach a receipt.');
       return;
     }
@@ -110,6 +120,11 @@ export default function SaleDetailsScreen({ saleId, sessionUser, onLogout, onBac
   }
 
   function attachReceipt() {
+    if (Platform.OS === 'web') {
+      pickReceipt('gallery');
+      return;
+    }
+
     Alert.alert(
       sale?.receiptImageUrl ? 'Replace Receipt' : 'Attach Receipt',
       'Choose how you want to add the receipt image.',

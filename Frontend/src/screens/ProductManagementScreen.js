@@ -38,8 +38,6 @@ function normalizeProduct(raw) {
     id: raw?.id || raw?._id || '',
     name: raw?.name || '',
     category: raw?.category || 'Other',
-    sku: raw?.sku || '',
-    barcode: raw?.barcode || '',
     brand: raw?.brand || '',
     supplier: raw?.supplier || '',
     unitType: raw?.unitType || 'piece',
@@ -195,7 +193,6 @@ function ProductCard({ product, onEdit, onDelete, isAdmin }) {
       </View>
 
       <View style={styles.tagsRow}>
-        {!!product.sku && <Text style={styles.tag}>SKU: {product.sku}</Text>}
         {!!product.unitType && <Text style={styles.tag}>{product.unitType}</Text>}
         {!!expiry && <Text style={[styles.tag, { color: expiry.color, backgroundColor: `${expiry.color}14` }]}>{expiry.text}</Text>}
       </View>
@@ -287,7 +284,7 @@ function SupplierPicker({ suppliers = [], value, onChange }) {
 }
 
 const EMPTY_FORM = {
-  name: '', category: 'Dairy', sku: '', barcode: '', brand: '',
+  name: '', category: 'Dairy', brand: '',
   supplier: '', unitType: 'piece', buyingPrice: '', sellingPrice: '',
 };
 
@@ -302,8 +299,6 @@ function ProductModal({ visible, onClose, onSubmit, onImageUpload, initialProduc
     setForm(initialProduct ? {
       name: initialProduct.name || '',
       category: initialProduct.category || 'Dairy',
-      sku: initialProduct.sku || '',
-      barcode: initialProduct.barcode || '',
       brand: initialProduct.brand || '',
       supplier: initialProduct.supplier || '',
       unitType: initialProduct.unitType || 'piece',
@@ -330,8 +325,8 @@ function ProductModal({ visible, onClose, onSubmit, onImageUpload, initialProduc
     onSubmit({
       name,
       category: form.category,
-      sku: form.sku.trim() || null,
-      barcode: form.barcode.trim() || null,
+      sku: null,
+      barcode: null,
       brand: form.brand.trim() || null,
       supplier: form.supplier.trim() || null,
       unitType: form.unitType,
@@ -367,8 +362,6 @@ function ProductModal({ visible, onClose, onSubmit, onImageUpload, initialProduc
             )}
 
             <FormInput label="Product Name" icon="cube-outline" value={form.name} onChangeText={(v) => update('name', v)} placeholder="e.g. Fresh Whole Milk" />
-            <FormInput label="SKU" icon="barcode-outline" value={form.sku} onChangeText={(v) => update('sku', v)} placeholder="Optional SKU code" />
-            <FormInput label="Barcode" icon="scan-outline" value={form.barcode} onChangeText={(v) => update('barcode', v)} placeholder="Optional barcode" />
             <FormInput label="Brand" icon="ribbon-outline" value={form.brand} onChangeText={(v) => update('brand', v)} placeholder="Optional brand name" />
             <SupplierPicker suppliers={suppliers} value={form.supplier} onChange={(v) => update('supplier', v)} />
             <FormInput label="Buying Price (Rs)" icon="pricetag-outline" value={form.buyingPrice} onChangeText={(v) => update('buyingPrice', v)} placeholder="0.00" keyboardType="decimal-pad" />
@@ -421,7 +414,7 @@ export default function ProductManagementScreen({ go, sessionUser, onLogout }) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return products.filter((p) => {
-      const text = `${p.name} ${p.category} ${p.brand} ${p.sku} ${p.barcode} ${p.supplier}`.toLowerCase();
+      const text = `${p.name} ${p.category} ${p.brand} ${p.supplier}`.toLowerCase();
       const matchesSearch = !q || text.includes(q);
       const matchesCategory = categoryFilter === 'all' || p.category === categoryFilter;
       return matchesSearch && matchesCategory;
@@ -537,7 +530,7 @@ export default function ProductManagementScreen({ go, sessionUser, onLogout }) {
             )}
           </View>
 
-          <FormInput label="Search Products" icon="search-outline" value={query} onChangeText={setQuery} placeholder="Search by name, SKU, brand, supplier..." />
+          <FormInput label="Search Products" icon="search-outline" value={query} onChangeText={setQuery} placeholder="Search by name, brand, supplier..." />
 
           <Text style={styles.filterTitle}>Category</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>

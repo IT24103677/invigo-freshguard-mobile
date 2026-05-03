@@ -72,8 +72,6 @@ export function matchesProductSearch(product, rawSearch) {
   const fields = [
     product?.name,
     product?.category,
-    product?.sku,
-    product?.barcode,
     product?.brand,
     product?.supplier,
   ]

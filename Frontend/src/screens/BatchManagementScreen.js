@@ -258,7 +258,7 @@ function BatchModal({ visible, onClose, onSubmit, initialBatch, loading, product
   const filteredProducts = useMemo(() => {
     const q = productSearch.trim().toLowerCase();
     return !q ? products : products.filter((p) =>
-      `${p.name} ${p.category} ${p.sku}`.toLowerCase().includes(q)
+      `${p.name} ${p.category} ${p.brand || ''} ${p.supplier || ''}`.toLowerCase().includes(q)
     );
   }, [products, productSearch]);
 

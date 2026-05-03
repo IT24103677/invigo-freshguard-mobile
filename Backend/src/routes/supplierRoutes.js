@@ -12,6 +12,9 @@ const {
 } = require('../controllers/supplierController');
 
 const router = express.Router();
+
+router.get('/:id/logo', getSupplierLogoHandler);
+
 router.use(protect, adminOnly);
 
 router.get('/', getSuppliers);
@@ -20,6 +23,5 @@ router.get('/:id', getSupplierById);
 router.put('/:id', updateSupplier);
 router.delete('/:id', deleteSupplier);
 router.post('/:id/logo', uploadSupplierLogo, uploadSupplierLogoHandler);
-router.get('/:id/logo', getSupplierLogoHandler);
 
 module.exports = router;

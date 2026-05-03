@@ -5,6 +5,12 @@ export const API_BASE_URL = rawApiBaseUrl.replace(/\/+$/, '');
 
 export const apiUrl = (path) => `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
 
+function toAbsoluteApiUrl(path) {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  return apiUrl(path);
+}
+
 let unauthorizedHandler = null;
 
 export function setUnauthorizedHandler(handler) {
@@ -36,6 +42,7 @@ function normalizeSale(sale) {
     ...sale,
     id: saleId,
     _id: saleId,
+    receiptImageUrl: toAbsoluteApiUrl(sale.receiptImageUrl),
   };
 }
 

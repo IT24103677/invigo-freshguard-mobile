@@ -208,7 +208,7 @@ export default function SalesPosScreen({
             />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search by name, SKU, or barcode..."
+              placeholder="Search by name, brand, or supplier..."
               placeholderTextColor={salesColors.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -228,7 +228,7 @@ export default function SalesPosScreen({
 
           <View style={styles.searchMetaRow}>
             <Text style={styles.searchHelperText}>
-              Search by product name, SKU, barcode, brand, or supplier
+              Search by product name, brand, or supplier
             </Text>
             {!loading ? (
               <Text style={styles.searchCountText}>
@@ -385,12 +385,6 @@ export default function SalesPosScreen({
                     </View>
 
                     <View style={styles.productMetaTags}>
-                      {product.sku ? (
-                        <View style={styles.productMetaTag}>
-                          <MaterialCommunityIcons name="tag-outline" size={12} color={salesColors.primary} />
-                          <Text style={styles.productMetaTagText}>SKU {product.sku}</Text>
-                        </View>
-                      ) : null}
                       {hasActiveDiscount ? (
                         <View style={styles.productDiscountTag}>
                           <MaterialCommunityIcons name="sale" size={12} color={salesColors.terracotta} />
