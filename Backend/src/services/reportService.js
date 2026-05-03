@@ -10,6 +10,7 @@ const {
   deleteReportAttachment,
   openReportAttachmentDownloadStream,
 } = require('../config/gridfs');
+const { verifyReportAttachmentToken } = require('../utils/reportAttachment');
 
 // ── Summary computation ───────────────────────────────────────────────────────
 
@@ -253,10 +254,22 @@ async function removeAttachment(id) {
   await report.save();
 }
 
-async function streamAttachment(id, res) {
+async function streamAttachment(id, res, options = {}) {
   const report = await Report.findById(id);
   if (!report || !report.isActive)  throw createHttpError(404, 'Report not found.');
   if (!report.attachmentFileId)     throw createHttpError(404, 'No attachment found.');
+
+  const hasSignedAccess = verifyReportAttachmentToken(options.attachmentToken, report.id);
+  const userRole = String(options.userRole || '').toUpperCase();
+
+  if (!hasSignedAccess) {
+    if (!userRole) {
+      throw createHttpError(401, 'Authentication required to access this attachment.');
+    }
+    if (userRole !== 'ADMIN' && report.visibility === 'ADMIN') {
+      throw createHttpError(403, 'Access denied.');
+    }
+  }
 
   const fileMeta = await findReportAttachment(report.attachmentFileId);
   if (!fileMeta) throw createHttpError(404, 'Attachment file missing from storage.');

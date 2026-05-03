@@ -237,7 +237,8 @@ function ReportCard({ item, isAdmin, onEdit, onDelete, onExport, onAttach, onRem
   const meta        = TYPE_META[item.reportType] || { icon: 'document-outline', color: colors.slate, label: item.reportType };
   const isAdminOnly = item.visibility === 'ADMIN';
   const hasAttachment = !!item.attachmentFileId;
-  const attachUrl     = hasAttachment ? getReportAttachmentUrl(item.id, item.attachmentUpdatedAt) : null;
+  const attachUrl     = item.attachmentUrl || (hasAttachment ? getReportAttachmentUrl(item.id, item.attachmentUpdatedAt) : null);
+  const showImagePreview = hasAttachment && !!attachUrl && isImageAttachment(item.attachmentContentType);
 
   return (
     <View style={[styles.reportCard, { borderLeftColor: meta.color }]}>
@@ -276,17 +277,31 @@ function ReportCard({ item, isAdmin, onEdit, onDelete, onExport, onAttach, onRem
 
       {hasAttachment ? (
         <View style={styles.attachmentPreviewWrap}>
-          <View style={styles.attachmentFileRow}>
-            <Ionicons name="document-attach-outline" size={18} color="#7C3AED" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.attachmentPreviewName} numberOfLines={1}>
-                {item.attachmentOriginalName || 'Attached file'}
-              </Text>
-              <Text style={styles.attachmentPreviewMeta} numberOfLines={1}>
-                {item.attachmentContentType || 'Document attachment'}
-              </Text>
+          {showImagePreview ? (
+            <>
+              <Image source={{ uri: attachUrl }} style={styles.attachmentPreviewImage} resizeMode="cover" />
+              <View style={styles.attachmentPreviewCaption}>
+                <Text style={styles.attachmentPreviewName} numberOfLines={1}>
+                  {item.attachmentOriginalName || 'Attached image'}
+                </Text>
+                <Text style={styles.attachmentPreviewMeta} numberOfLines={1}>
+                  {item.attachmentContentType || 'Image attachment'}
+                </Text>
+              </View>
+            </>
+          ) : (
+            <View style={styles.attachmentFileRow}>
+              <Ionicons name="document-attach-outline" size={18} color="#7C3AED" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.attachmentPreviewName} numberOfLines={1}>
+                  {item.attachmentOriginalName || 'Attached file'}
+                </Text>
+                <Text style={styles.attachmentPreviewMeta} numberOfLines={1}>
+                  {item.attachmentContentType || 'Document attachment'}
+                </Text>
+              </View>
             </View>
-          </View>
+          )}
         </View>
       ) : null}
 

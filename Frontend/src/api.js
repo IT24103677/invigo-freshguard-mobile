@@ -56,6 +56,17 @@ function normalizeProduct(product) {
   };
 }
 
+function normalizeReport(report) {
+  if (!report) return null;
+  const reportId = report._id || report.id || '';
+  return {
+    ...report,
+    id: reportId,
+    _id: reportId,
+    attachmentUrl: toAbsoluteApiUrl(report.attachmentUrl),
+  };
+}
+
 function withQuery(path, params = {}) {
   const query = new URLSearchParams();
 
@@ -526,21 +537,21 @@ export async function getReports(params = {}) {
   const response = await request(withQuery('/reports', params));
   if (!response.ok) throw new Error(await parseError(response, 'Failed to fetch reports'));
   const data = await response.json();
-  return data.data || [];
+  return (data.data || []).map(normalizeReport).filter(Boolean);
 }
 
 export async function createReport(payload) {
   const response = await request('/reports', { method: 'POST', body: JSON.stringify(payload) });
   if (!response.ok) throw new Error(await parseError(response, 'Failed to create report'));
   const data = await response.json();
-  return data.data;
+  return normalizeReport(data.data);
 }
 
 export async function updateReport(id, payload) {
   const response = await request(`/reports/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
   if (!response.ok) throw new Error(await parseError(response, 'Failed to update report'));
   const data = await response.json();
-  return data.data;
+  return normalizeReport(data.data);
 }
 
 export async function deleteReport(id) {
@@ -565,7 +576,7 @@ export async function uploadReportAttachment(id, file) {
   });
   if (!response.ok) throw new Error(await parseError(response, 'Failed to upload attachment'));
   const data = await response.json();
-  return data.data;
+  return normalizeReport(data.data);
 }
 
 export async function removeReportAttachment(id) {
