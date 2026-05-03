@@ -18,8 +18,8 @@ router.post('/login', login);
 router.post('/forgot-password', forgotPassword);
 router.post('/verify-otp', verifyOtp);
 router.post('/reset-password', resetPassword);
+router.get('/me/avatar', getMyProfileAvatar);
 router.put('/me/avatar', protect, uploadProfileImage, uploadMyProfileAvatar);
-router.get('/me/avatar', protect, getMyProfileAvatar);
 router.get('/me', protect, getCurrentUser);
 router.put('/me/password', protect, changeMyPassword);
 

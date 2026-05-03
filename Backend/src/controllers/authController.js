@@ -5,7 +5,7 @@ const signToken = require('../utils/token');
 const asyncHandler = require('../utils/asyncHandler');
 const { sendMail } = require('../utils/mailer');
 const buildPasswordResetEmail = require('../utils/passwordResetEmail');
-const { buildProfileImagePath } = require('../utils/profileImage');
+const { buildProfileImagePath, readProfileImageToken } = require('../utils/profileImage');
 const {
   storeProfileImage,
   findProfileImage,
@@ -289,20 +289,42 @@ const uploadMyProfileAvatar = asyncHandler(async (req, res) => {
 });
 
 const getMyProfileAvatar = asyncHandler(async (req, res) => {
-  if (String(req.user?.role || '').toUpperCase() !== 'STAFF') {
+  const tokenPayload = readProfileImageToken(req.query.profileImageToken);
+  if (!tokenPayload?.userId) {
+    return res.status(401).json({ message: 'Invalid or expired profile photo link.' });
+  }
+
+  const user = await User.findById(tokenPayload.userId);
+  if (!user) {
+    return res.status(404).json({ message: 'User not found.' });
+  }
+
+  if (String(user.role || '').toUpperCase() !== 'STAFF') {
     return res.status(403).json({ message: 'Only staff can view profile photos here.' });
   }
 
-  if (!req.user?.profileImageFileId) {
+  if (String(user.status || 'ACTIVE').toUpperCase() !== 'ACTIVE') {
+    return res.status(403).json({ message: 'Account is inactive. Please contact admin.' });
+  }
+
+  const currentUpdatedAt = user.profileImageUpdatedAt
+    ? new Date(user.profileImageUpdatedAt).toISOString()
+    : '';
+
+  if (tokenPayload.updatedAt !== currentUpdatedAt) {
+    return res.status(401).json({ message: 'Profile photo link is no longer valid.' });
+  }
+
+  if (!user.profileImageFileId) {
     return res.status(404).json({ message: 'No profile photo uploaded yet.' });
   }
 
-  const file = await findProfileImage(req.user.profileImageFileId);
+  const file = await findProfileImage(user.profileImageFileId);
   if (!file) {
     return res.status(404).json({ message: 'Profile photo not found.' });
   }
 
-  res.setHeader('Content-Type', file.contentType || req.user.profileImageContentType || 'application/octet-stream');
+  res.setHeader('Content-Type', file.contentType || user.profileImageContentType || 'application/octet-stream');
   res.setHeader('Cache-Control', 'private, max-age=300');
 
   const downloadStream = openProfileImageDownloadStream(file._id);

@@ -90,7 +90,17 @@ async function request(path, options = {}, useAuth = true) {
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(apiUrl(path), { ...options, headers });
+  const url = apiUrl(path);
+  let response;
+  try {
+    response = await fetch(url, { ...options, headers });
+  } catch (error) {
+    const healthUrl = apiUrl('/health');
+    throw new Error(
+      `Cannot reach the server from this device. Open ${healthUrl} on your phone browser to test it.`
+    );
+  }
+
   if (response.status === 401) {
     await clearSession();
     unauthorizedHandler?.();

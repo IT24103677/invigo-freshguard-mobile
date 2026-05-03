@@ -7,7 +7,7 @@ import FormInput from '../components/FormInput';
 import PrimaryButton, { GhostButton } from '../components/PrimaryButton';
 import WorkspaceHeader from '../components/WorkspaceHeader';
 import { apiUrl, changeMyPassword, getCurrentUser, uploadMyProfileAvatar } from '../api';
-import { getAuthToken, saveSession } from '../session';
+import { saveSession } from '../session';
 import { colors } from '../theme';
 
 const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,30}$/;
@@ -30,12 +30,9 @@ function normaliseProfile(user) {
   };
 }
 
-function buildAvatarSource(avatarPath, token) {
-  if (!avatarPath || !token) return null;
-  return {
-    uri: apiUrl(avatarPath),
-    headers: Platform.OS === 'web' ? undefined : { Authorization: `Bearer ${token}` },
-  };
+function buildAvatarSource(avatarPath) {
+  if (!avatarPath) return null;
+  return { uri: apiUrl(avatarPath) };
 }
 
 function formatDateTime(value) {
@@ -56,7 +53,6 @@ export default function ProfileScreen({ go, sessionUser, setSessionUser, onLogou
   const [refreshing, setRefreshing] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
-  const [avatarToken, setAvatarToken] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [passwordForm, setPasswordForm] = useState({
@@ -75,22 +71,6 @@ export default function ProfileScreen({ go, sessionUser, setSessionUser, onLogou
 
   useEffect(() => {
     refreshProfile();
-  }, [sessionUser?.id]);
-
-  useEffect(() => {
-    let active = true;
-
-    getAuthToken()
-      .then((token) => {
-        if (active) setAvatarToken(token || '');
-      })
-      .catch(() => {
-        if (active) setAvatarToken('');
-      });
-
-    return () => {
-      active = false;
-    };
   }, [sessionUser?.id]);
 
   function updatePasswordField(key, value) {
@@ -210,7 +190,7 @@ export default function ProfileScreen({ go, sessionUser, setSessionUser, onLogou
     }
   }
 
-  const avatarSource = buildAvatarSource(profile.avatarPath, avatarToken);
+  const avatarSource = buildAvatarSource(profile.avatarPath);
 
   return (
     <View style={styles.root}>
