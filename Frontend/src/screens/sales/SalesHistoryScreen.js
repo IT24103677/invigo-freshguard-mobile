@@ -31,6 +31,7 @@ const STATUS_OPTIONS = ['ALL', 'ACTIVE', 'VOID'];
 const RANGE_OPTIONS = ['ALL_TIME', 'TODAY', 'THIS_WEEK', 'THIS_MONTH'];
 
 export default function SalesHistoryScreen({
+  go,
   sessionUser,
   onLogout,
   onOpenSaleDetails,
@@ -115,6 +116,9 @@ export default function SalesHistoryScreen({
           pillLabel={`${String(sessionUser?.role || 'STAFF').toUpperCase()} Sales History`}
           pillIcon="receipt-text-outline"
           onLogout={onLogout}
+          go={go}
+          role={sessionUser?.role}
+          sessionUser={sessionUser}
         />
 
         <View style={styles.heroBlock}>

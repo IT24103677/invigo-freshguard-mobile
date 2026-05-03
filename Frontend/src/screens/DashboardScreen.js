@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import Card from '../components/Card';
 import { MAIN_BOTTOM_NAV_HEIGHT } from '../components/BottomNav';
 import Logo from '../components/Logo';
-import { getCurrentUser, getLoginHistory, getSuppliers, getUsers } from '../api';
+import { getCurrentUser, getBatches, getLoginHistory, getProducts, getSuppliers, getUsers } from '../api';
 import { saveSession } from '../session';
+import AppDrawer from '../components/AppDrawer';
 import { colors } from '../theme';
 
 function cleanRole(role) {
@@ -87,7 +88,11 @@ export default function DashboardScreen({
     supplierCount: 0,
     lockedCount: 0,
     failedLoginCount: 0,
+    productCount: 0,
+    batchCount: 0,
+    expiringCount: 0,
   });
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -118,11 +123,13 @@ export default function DashboardScreen({
 
     try {
       if (cleanRole(sessionUser?.role) === 'ADMIN') {
-        const [profileResult, usersResult, suppliersResult, historyResult] = await Promise.allSettled([
+        const [profileResult, usersResult, suppliersResult, historyResult, productsResult, batchesResult] = await Promise.allSettled([
           getCurrentUser(),
           getUsers(),
           getSuppliers(),
           getLoginHistory(),
+          getProducts(),
+          getBatches(),
         ]);
 
         const issues = [];
@@ -136,6 +143,8 @@ export default function DashboardScreen({
         const users = usersResult.status === 'fulfilled' ? usersResult.value : [];
         const suppliers = suppliersResult.status === 'fulfilled' ? suppliersResult.value : [];
         const history = historyResult.status === 'fulfilled' ? historyResult.value : [];
+        const products = productsResult.status === 'fulfilled' ? productsResult.value : [];
+        const batches = batchesResult.status === 'fulfilled' ? batchesResult.value : [];
 
         if (usersResult.status === 'rejected') issues.push(usersResult.reason?.message || 'Could not load users.');
         if (suppliersResult.status === 'rejected') issues.push(suppliersResult.reason?.message || 'Could not load suppliers.');
@@ -145,11 +154,21 @@ export default function DashboardScreen({
         const lockedUsers = activeUsers.filter((user) => Boolean(user.accountLocked) && cleanRole(user.role) !== 'ADMIN');
         const failedLogins = history.filter((entry) => String(entry.status || '').toUpperCase() === 'FAILED');
 
+        const now = Date.now();
+        const expiringBatches = batches.filter((b) => {
+          if (!b.expiryDate) return false;
+          const days = Math.floor((new Date(b.expiryDate) - now) / 86400000);
+          return days >= 0 && days <= 7;
+        });
+
         setSummary({
           userCount: activeUsers.length,
           supplierCount: suppliers.length,
           lockedCount: lockedUsers.length,
           failedLoginCount: failedLogins.length,
+          productCount: products.length,
+          batchCount: batches.length,
+          expiringCount: expiringBatches.length,
         });
 
         setError(issues.join(' '));
@@ -171,6 +190,7 @@ export default function DashboardScreen({
   }
 
   return (
+    <>
     <View style={styles.root}>
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -178,7 +198,13 @@ export default function DashboardScreen({
         refreshControl={<RefreshControl refreshing={loading} onRefresh={loadDashboard} />}
       >
         <View style={styles.header}>
-          <Logo size={38} textSize={28} />
+          {go ? (
+            <Pressable style={styles.menuBtn} onPress={() => setDrawerOpen(true)} hitSlop={10}>
+              <Ionicons name="menu-outline" size={24} color={colors.slate} />
+            </Pressable>
+          ) : (
+            <Logo size={38} textSize={28} />
+          )}
 
           <Pressable style={styles.logoutButtonTop} onPress={onLogout} hitSlop={10}>
             <Ionicons name="log-out-outline" size={18} color={colors.danger} />
@@ -208,8 +234,28 @@ export default function DashboardScreen({
         {!!error && <Text style={styles.warn}>{error}</Text>}
 
         {isAdmin ? (
-          <View style={styles.statsRow}>
-            <>
+          <View style={styles.statsGrid}>
+            <View style={styles.statsRow}>
+              <StatCard
+                value={summary.productCount}
+                label="Products"
+                icon="cube-outline"
+                color={colors.purple}
+              />
+              <StatCard
+                value={summary.batchCount}
+                label="Batches"
+                icon="archive-outline"
+                color={colors.emerald}
+              />
+              <StatCard
+                value={summary.expiringCount}
+                label="Expiring"
+                icon="warning-outline"
+                color={summary.expiringCount > 0 ? colors.danger : colors.emerald}
+              />
+            </View>
+            <View style={styles.statsRow}>
               <StatCard
                 value={summary.userCount}
                 label="Active Users"
@@ -222,13 +268,7 @@ export default function DashboardScreen({
                 icon="business-outline"
                 color={colors.emerald}
               />
-              <StatCard
-                value={summary.lockedCount}
-                label="Locked"
-                icon="lock-closed-outline"
-                color={colors.danger}
-              />
-            </>
+            </View>
           </View>
         ) : (
           <View style={styles.staffStatsSection}>
@@ -277,21 +317,41 @@ export default function DashboardScreen({
 
             {isAdmin && (
               <ModuleCard
-                title="User Management"
-                subtitle="Create, edit, unlock, and revoke staff access."
-                icon="people-outline"
+                title="Product Management"
+                subtitle="Add, edit, and manage your product catalog with pricing and stock."
+                icon="cube-outline"
                 color={colors.purple}
-                onPress={() => go('adminUsers')}
+                onPress={() => go('products')}
+              />
+            )}
+
+            {isAdmin && (
+              <ModuleCard
+                title="Batch Management"
+                subtitle="Track inventory batches, expiry dates, and FEFO stock rotation."
+                icon="archive-outline"
+                color={colors.emerald}
+                onPress={() => go('batches')}
               />
             )}
 
             {isAdmin && (
               <ModuleCard
                 title="Supplier Management"
-                subtitle="Manage supplier details, categories, ratings, and status."
+                subtitle="Manage supplier details, categories, ratings, and delivery info."
                 icon="business-outline"
-                color={colors.emerald}
+                color={colors.magenta}
                 onPress={() => go('suppliers')}
+              />
+            )}
+
+            {isAdmin && (
+              <ModuleCard
+                title="User Management"
+                subtitle="Create, edit, unlock, and revoke staff access."
+                icon="people-outline"
+                color={colors.slate}
+                onPress={() => go('adminUsers')}
               />
             )}
 
@@ -312,7 +372,7 @@ export default function DashboardScreen({
             <Ionicons
               name={isAdmin ? 'shield-checkmark-outline' : 'sparkles-outline'}
               size={22}
-              color={summary.lockedCount > 0 ? colors.danger : colors.emerald}
+              color={colors.emerald}
             />
           </View>
 
@@ -320,9 +380,7 @@ export default function DashboardScreen({
             <Text style={styles.noticeTitle}>{isAdmin ? 'Operations Snapshot' : 'Account Snapshot'}</Text>
             <Text style={styles.noticeText}>
               {isAdmin
-                ? summary.lockedCount > 0
-                  ? `There are ${summary.lockedCount} locked staff accounts waiting for review.`
-                  : `All active staff accounts are currently unlocked. Failed logins recorded: ${summary.failedLoginCount}.`
+                ? `All active staff accounts are currently unlocked. Failed logins recorded: ${summary.failedLoginCount}.`
                 : profile.accountLocked
                   ? 'Your account is currently locked. Please contact an administrator.'
                   : `You are signed in with ${profile.role || 'STAFF'} access under the fixed admin/staff role system.`}
@@ -331,6 +389,17 @@ export default function DashboardScreen({
         </Card>
       </ScrollView>
     </View>
+    {go && (
+      <AppDrawer
+        visible={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        go={go}
+        role={profile.role}
+        sessionUser={sessionUser}
+        onLogout={onLogout}
+      />
+    )}
+    </>
   );
 }
 
@@ -373,6 +442,16 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
+  menuBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(15,23,42,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   logoutButtonTop: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -431,10 +510,14 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
+  statsGrid: {
+    marginTop: 26,
+    gap: 10,
+  },
+
   statsRow: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 26,
   },
 
   staffStatsSection: {

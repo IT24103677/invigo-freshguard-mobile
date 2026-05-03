@@ -65,8 +65,31 @@ async function getProductById(productId) {
   return product;
 }
 
+async function updateProduct(productId, payload) {
+  const product = await Product.findById(productId);
+  if (!product || !product.isActive) {
+    throw createHttpError(404, 'Product not found.');
+  }
+
+  Object.assign(product, payload);
+  await product.save();
+  return product;
+}
+
+async function deleteProduct(productId) {
+  const product = await Product.findById(productId);
+  if (!product || !product.isActive) {
+    throw createHttpError(404, 'Product not found.');
+  }
+
+  product.isActive = false;
+  await product.save();
+}
+
 module.exports = {
   createProduct,
   getProducts,
   getProductById,
+  updateProduct,
+  deleteProduct,
 };

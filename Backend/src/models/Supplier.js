@@ -18,6 +18,8 @@ const supplierSchema = new mongoose.Schema({
   lastOrderDate: { type: String, trim: true, default: '' },
   address: { type: String, trim: true, default: '' },
   notes: { type: String, trim: true, default: '' },
+  logoFileId: { type: mongoose.Schema.Types.ObjectId, default: null },
+  logoUpdatedAt: { type: Date, default: null },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
 

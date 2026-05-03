@@ -51,7 +51,7 @@ function formatDateTime(value) {
   });
 }
 
-export default function ProfileScreen({ sessionUser, setSessionUser, onLogout }) {
+export default function ProfileScreen({ go, sessionUser, setSessionUser, onLogout }) {
   const [profile, setProfile] = useState(normaliseProfile(sessionUser || {}));
   const [refreshing, setRefreshing] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -223,6 +223,9 @@ export default function ProfileScreen({ sessionUser, setSessionUser, onLogout })
           pillLabel="Staff Profile"
           pillIcon="person-outline"
           onLogout={onLogout}
+          go={go}
+          role={sessionUser?.role}
+          sessionUser={sessionUser}
         />
 
         <View style={styles.profileTop}>

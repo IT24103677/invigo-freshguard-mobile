@@ -223,11 +223,168 @@ export async function deleteSupplier(id) {
   if (!response.ok) throw new Error(await parseError(response, 'Failed to delete supplier'));
 }
 
+export async function uploadSupplierLogo(supplierId, asset) {
+  const formData = new FormData();
+  if (asset?.file) {
+    formData.append('logo', asset.file);
+  } else {
+    formData.append('logo', {
+      uri: asset.uri,
+      name: asset.fileName || `supplier-logo-${Date.now()}.jpg`,
+      type: asset.mimeType || 'image/jpeg',
+    });
+  }
+
+  const response = await request(`/admin/suppliers/${supplierId}/logo`, {
+    method: 'POST',
+    body: formData,
+    skipJsonContentType: true,
+  });
+
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to upload supplier logo'));
+  return response.json();
+}
+
+export function getSupplierLogoUrl(supplierId, updatedAt) {
+  if (!supplierId) return null;
+  const base = apiUrl(`/admin/suppliers/${supplierId}/logo`);
+  return updatedAt ? `${base}?updatedAt=${encodeURIComponent(updatedAt)}` : base;
+}
+
 export async function getProducts() {
   const response = await request('/products');
   if (!response.ok) throw new Error(await parseError(response, 'Failed to fetch products'));
   const payload = await response.json();
   return (payload.data || []).map(normalizeProduct).filter(Boolean);
+}
+
+export async function getProductById(id) {
+  const response = await request(`/products/${id}`);
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to fetch product'));
+  const payload = await response.json();
+  return normalizeProduct(payload.data);
+}
+
+export async function createProduct(productData) {
+  const response = await request('/products', {
+    method: 'POST',
+    body: JSON.stringify(productData),
+  });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to create product'));
+  const payload = await response.json();
+  return normalizeProduct(payload.data);
+}
+
+export async function updateProduct(id, productData) {
+  const response = await request(`/products/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(productData),
+  });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to update product'));
+  const payload = await response.json();
+  return normalizeProduct(payload.data);
+}
+
+export async function deleteProduct(id) {
+  const response = await request(`/products/${id}`, { method: 'DELETE' });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to delete product'));
+}
+
+export async function uploadProductImage(productId, asset) {
+  const formData = new FormData();
+  if (asset?.file) {
+    formData.append('image', asset.file);
+  } else {
+    formData.append('image', {
+      uri: asset.uri,
+      name: asset.fileName || `product-image-${Date.now()}.jpg`,
+      type: asset.mimeType || 'image/jpeg',
+    });
+  }
+
+  const response = await request(`/products/${productId}/image`, {
+    method: 'POST',
+    body: formData,
+    skipJsonContentType: true,
+  });
+
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to upload product image'));
+  const payload = await response.json();
+  return normalizeProduct(payload.data);
+}
+
+export function getProductImageUrl(productId, updatedAt) {
+  if (!productId) return null;
+  const base = apiUrl(`/products/${productId}/image`);
+  return updatedAt ? `${base}?updatedAt=${encodeURIComponent(updatedAt)}` : base;
+}
+
+export async function getBatches(params = {}) {
+  const response = await request(withQuery('/batches', params));
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to fetch batches'));
+  const payload = await response.json();
+  return payload.data || [];
+}
+
+export async function getBatchById(id) {
+  const response = await request(`/batches/${id}`);
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to fetch batch'));
+  const payload = await response.json();
+  return payload.data;
+}
+
+export async function createBatch(batchData) {
+  const response = await request('/batches', {
+    method: 'POST',
+    body: JSON.stringify(batchData),
+  });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to create batch'));
+  const payload = await response.json();
+  return payload.data;
+}
+
+export async function updateBatch(id, batchData) {
+  const response = await request(`/batches/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(batchData),
+  });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to update batch'));
+  const payload = await response.json();
+  return payload.data;
+}
+
+export async function deleteBatch(id) {
+  const response = await request(`/batches/${id}`, { method: 'DELETE' });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to delete batch'));
+}
+
+export async function uploadBatchDocument(batchId, asset) {
+  const formData = new FormData();
+  if (asset?.file) {
+    formData.append('document', asset.file);
+  } else {
+    formData.append('document', {
+      uri: asset.uri,
+      name: asset.fileName || `batch-document-${Date.now()}.pdf`,
+      type: asset.mimeType || 'application/pdf',
+    });
+  }
+
+  const response = await request(`/batches/${batchId}/document`, {
+    method: 'POST',
+    body: formData,
+    skipJsonContentType: true,
+  });
+
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to upload batch document'));
+  const payload = await response.json();
+  return payload.data;
+}
+
+export function getBatchDocumentUrl(batchId, updatedAt) {
+  if (!batchId) return null;
+  const base = apiUrl(`/batches/${batchId}/document`);
+  return updatedAt ? `${base}?updatedAt=${encodeURIComponent(updatedAt)}` : base;
 }
 
 export async function getSalesDashboardSummary(params = {}) {
@@ -309,4 +466,126 @@ export async function uploadSaleReceipt(saleId, asset) {
   if (!response.ok) throw new Error(await parseError(response, 'Failed to upload sale receipt'));
   const data = await response.json();
   return normalizeSale(data.data);
+}
+
+// ── Discounts ─────────────────────────────────────────────────────────────────
+export async function getDiscounts() {
+  const response = await request('/discounts');
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to fetch discounts'));
+  const data = await response.json();
+  return data.data || [];
+}
+
+export async function createDiscount(payload) {
+  const response = await request('/discounts', { method: 'POST', body: JSON.stringify(payload) });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to create discount'));
+  const data = await response.json();
+  return data.data;
+}
+
+export async function updateDiscount(id, payload) {
+  const response = await request(`/discounts/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to update discount'));
+  const data = await response.json();
+  return data.data;
+}
+
+export async function toggleDiscount(id) {
+  const response = await request(`/discounts/${id}/toggle`, { method: 'POST' });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to toggle discount'));
+  const data = await response.json();
+  return data.data;
+}
+
+export async function deleteDiscount(id) {
+  const response = await request(`/discounts/${id}`, { method: 'DELETE' });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to delete discount'));
+}
+
+export async function uploadDiscountPromoImage(id, asset) {
+  const formData = new FormData();
+  formData.append('image', {
+    uri: asset.uri,
+    name: asset.fileName || `promo-${Date.now()}.jpg`,
+    type: asset.mimeType || 'image/jpeg',
+  });
+  const response = await request(`/discounts/${id}/image`, {
+    method: 'POST',
+    body: formData,
+    skipJsonContentType: true,
+  });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to upload promotion image'));
+  const data = await response.json();
+  return data.data;
+}
+
+export function getDiscountPromoImageUrl(id, updatedAt) {
+  const bust = updatedAt ? new Date(updatedAt).getTime() : 0;
+  return `${API_BASE_URL}/discounts/${id}/image?t=${bust}`;
+}
+
+export async function getBatchesByProduct(productId) {
+  return getBatches({ productId });
+}
+
+// ── Reports ───────────────────────────────────────────────────────────────────
+export async function getReportsOverview() {
+  const response = await request('/reports/overview');
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to fetch report overview'));
+  const data = await response.json();
+  return data.data || {};
+}
+
+export async function getReports(params = {}) {
+  const response = await request(withQuery('/reports', params));
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to fetch reports'));
+  const data = await response.json();
+  return data.data || [];
+}
+
+export async function createReport(payload) {
+  const response = await request('/reports', { method: 'POST', body: JSON.stringify(payload) });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to create report'));
+  const data = await response.json();
+  return data.data;
+}
+
+export async function updateReport(id, payload) {
+  const response = await request(`/reports/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to update report'));
+  const data = await response.json();
+  return data.data;
+}
+
+export async function deleteReport(id) {
+  const response = await request(`/reports/${id}`, { method: 'DELETE' });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to delete report'));
+}
+
+export async function uploadReportAttachment(id, file) {
+  // file: { uri, name, mimeType } from expo-document-picker or expo-image-picker
+  const formData = new FormData();
+  formData.append('attachment', {
+    uri:  file.uri,
+    name: file.name || file.fileName || `attachment-${Date.now()}`,
+    type: file.mimeType || file.type || 'application/octet-stream',
+  });
+  const response = await request(`/reports/${id}/attachment`, {
+    method: 'POST',
+    body:   formData,
+    skipJsonContentType: true,
+  });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to upload attachment'));
+  const data = await response.json();
+  return data.data;
+}
+
+export async function removeReportAttachment(id) {
+  const response = await request(`/reports/${id}/attachment`, { method: 'DELETE' });
+  if (!response.ok) throw new Error(await parseError(response, 'Failed to remove attachment'));
+}
+
+export function getReportAttachmentUrl(id, updatedAt) {
+  const bust = updatedAt ? new Date(updatedAt).getTime() : 0;
+  return `${API_BASE_URL}/reports/${id}/attachment?t=${bust}`;
 }

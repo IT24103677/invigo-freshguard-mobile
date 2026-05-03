@@ -51,6 +51,14 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    imageFileId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
+    },
+    imageUpdatedAt: {
+      type: Date,
+      default: null,
+    },
     isActive: {
       type: Boolean,
       default: true,

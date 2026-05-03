@@ -16,6 +16,10 @@ import LandingScreen from './src/screens/LandingScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SupplierManagementScreen from './src/screens/SupplierManagementScreen';
+import ProductManagementScreen from './src/screens/ProductManagementScreen';
+import BatchManagementScreen from './src/screens/BatchManagementScreen';
+import AlertsScreen from './src/screens/AlertsScreen';
+import DiscountsScreen from './src/screens/DiscountsScreen';
 import SaleDetailsScreen from './src/screens/sales/SaleDetailsScreen';
 import SalesCheckoutScreen from './src/screens/sales/SalesCheckoutScreen';
 import SalesHistoryScreen from './src/screens/sales/SalesHistoryScreen';
@@ -98,9 +102,28 @@ function AdminTabs({ sessionUser, setSessionUser, onLogout }) {
           />
         )}
       </Tab.Screen>
+      <Tab.Screen name="products">
+        {({ navigation }) => (
+          <ProductManagementScreen
+            go={buildAppGo(navigation, 'ADMIN')}
+            sessionUser={sessionUser}
+            onLogout={onLogout}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen name="batches">
+        {({ navigation }) => (
+          <BatchManagementScreen
+            go={buildAppGo(navigation, 'ADMIN')}
+            sessionUser={sessionUser}
+            onLogout={onLogout}
+          />
+        )}
+      </Tab.Screen>
       <Tab.Screen name="salesPos">
         {({ navigation }) => (
           <SalesPosScreen
+            go={buildAppGo(navigation, 'ADMIN')}
             sessionUser={sessionUser}
             onLogout={onLogout}
             onOpenCheckout={() => navigation.navigate('SalesCheckout')}
@@ -110,6 +133,7 @@ function AdminTabs({ sessionUser, setSessionUser, onLogout }) {
       <Tab.Screen name="salesHistory">
         {({ navigation }) => (
           <SalesHistoryScreen
+            go={buildAppGo(navigation, 'ADMIN')}
             sessionUser={sessionUser}
             onLogout={onLogout}
             onOpenSaleDetails={(saleId) => navigation.navigate('SaleDetails', { saleId })}
@@ -119,10 +143,29 @@ function AdminTabs({ sessionUser, setSessionUser, onLogout }) {
       <Tab.Screen name="salesReports">
         {({ navigation }) => (
           <SalesReportsScreen
+            go={buildAppGo(navigation, 'ADMIN')}
             sessionUser={sessionUser}
             onLogout={onLogout}
             onOpenHistory={() => navigation.navigate('salesHistory')}
             onOpenPos={() => navigation.navigate('salesPos')}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen name="alerts">
+        {({ navigation }) => (
+          <AlertsScreen
+            go={buildAppGo(navigation, 'ADMIN')}
+            sessionUser={sessionUser}
+            onLogout={onLogout}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen name="discounts">
+        {({ navigation }) => (
+          <DiscountsScreen
+            go={buildAppGo(navigation, 'ADMIN')}
+            sessionUser={sessionUser}
+            onLogout={onLogout}
           />
         )}
       </Tab.Screen>
@@ -148,8 +191,9 @@ function StaffTabs({ sessionUser, setSessionUser, onLogout }) {
         )}
       </Tab.Screen>
       <Tab.Screen name="profile">
-        {() => (
+        {({ navigation }) => (
           <ProfileScreen
+            go={buildAppGo(navigation, 'STAFF')}
             sessionUser={sessionUser}
             setSessionUser={setSessionUser}
             onLogout={onLogout}
@@ -159,6 +203,7 @@ function StaffTabs({ sessionUser, setSessionUser, onLogout }) {
       <Tab.Screen name="salesPos">
         {({ navigation }) => (
           <SalesPosScreen
+            go={buildAppGo(navigation, 'STAFF')}
             sessionUser={sessionUser}
             onLogout={onLogout}
             onOpenCheckout={() => navigation.navigate('SalesCheckout')}
@@ -168,6 +213,7 @@ function StaffTabs({ sessionUser, setSessionUser, onLogout }) {
       <Tab.Screen name="salesHistory">
         {({ navigation }) => (
           <SalesHistoryScreen
+            go={buildAppGo(navigation, 'STAFF')}
             sessionUser={sessionUser}
             onLogout={onLogout}
             onOpenSaleDetails={(saleId) => navigation.navigate('SaleDetails', { saleId })}
@@ -177,10 +223,20 @@ function StaffTabs({ sessionUser, setSessionUser, onLogout }) {
       <Tab.Screen name="salesReports">
         {({ navigation }) => (
           <SalesReportsScreen
+            go={buildAppGo(navigation, 'STAFF')}
             sessionUser={sessionUser}
             onLogout={onLogout}
             onOpenHistory={() => navigation.navigate('salesHistory')}
             onOpenPos={() => navigation.navigate('salesPos')}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen name="discounts">
+        {({ navigation }) => (
+          <DiscountsScreen
+            go={buildAppGo(navigation, 'STAFF')}
+            sessionUser={sessionUser}
+            onLogout={onLogout}
           />
         )}
       </Tab.Screen>
@@ -339,9 +395,13 @@ export default function App() {
             dashboard: 'admin/dashboard',
             adminUsers: 'admin/users',
             suppliers: 'admin/suppliers',
+            products: 'admin/products',
+            batches: 'admin/batches',
             salesPos: 'admin/pos',
             salesHistory: 'admin/sales',
             salesReports: 'admin/reports',
+            alerts: 'admin/alerts',
+            discounts: 'admin/discounts',
           },
         },
         StaffApp: {
@@ -351,6 +411,7 @@ export default function App() {
             salesPos: 'staff/pos',
             salesHistory: 'staff/sales',
             salesReports: 'staff/reports',
+            discounts: 'staff/discounts',
           },
         },
         SalesCheckout: 'sales/checkout',

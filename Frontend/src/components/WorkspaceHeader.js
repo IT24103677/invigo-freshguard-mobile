@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AppDrawer from './AppDrawer';
 import Logo from './Logo';
 import { colors } from '../theme';
 
@@ -10,37 +11,63 @@ export default function WorkspaceHeader({
   pillColor = colors.purple,
   onLogout,
   onBack = null,
+  go = null,
+  role = 'STAFF',
+  sessionUser = null,
 }) {
-  return (
-    <View style={styles.wrap}>
-      <View style={styles.header}>
-        <Logo size={38} textSize={28} />
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-        {onLogout ? (
-          <Pressable style={styles.logoutButton} onPress={onLogout} hitSlop={10}>
-            <Ionicons name="log-out-outline" size={18} color={colors.danger} />
-            <Text style={styles.logoutText}>Logout</Text>
-          </Pressable>
+  return (
+    <>
+      <View style={styles.wrap}>
+        <View style={styles.header}>
+          {go ? (
+            <Pressable style={styles.menuBtn} onPress={() => setDrawerOpen(true)} hitSlop={10}>
+              <Ionicons name="menu-outline" size={24} color={colors.slate} />
+            </Pressable>
+          ) : (
+            <Logo size={38} textSize={28} />
+          )}
+
+          <View style={styles.headerRight}>
+            {onLogout ? (
+              <Pressable style={styles.logoutButton} onPress={onLogout} hitSlop={10}>
+                <Ionicons name="log-out-outline" size={18} color={colors.danger} />
+                <Text style={styles.logoutText}>Logout</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+
+        {(pillLabel || onBack) ? (
+          <View style={styles.metaRow}>
+            {onBack ? (
+              <Pressable style={styles.backButton} onPress={onBack} hitSlop={10}>
+                <Ionicons name="chevron-back" size={18} color={colors.slate} />
+              </Pressable>
+            ) : null}
+
+            {!!pillLabel && (
+              <View style={styles.pill}>
+                <Ionicons name={pillIcon} size={15} color={pillColor} />
+                <Text style={[styles.pillText, { color: pillColor }]}>{pillLabel}</Text>
+              </View>
+            )}
+          </View>
         ) : null}
       </View>
 
-      {(pillLabel || onBack) ? (
-        <View style={styles.metaRow}>
-          {onBack ? (
-            <Pressable style={styles.backButton} onPress={onBack} hitSlop={10}>
-              <Ionicons name="chevron-back" size={18} color={colors.slate} />
-            </Pressable>
-          ) : null}
-
-          {!!pillLabel && (
-            <View style={styles.pill}>
-              <Ionicons name={pillIcon} size={15} color={pillColor} />
-              <Text style={[styles.pillText, { color: pillColor }]}>{pillLabel}</Text>
-            </View>
-          )}
-        </View>
-      ) : null}
-    </View>
+      {go && (
+        <AppDrawer
+          visible={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          go={go}
+          role={role}
+          sessionUser={sessionUser}
+          onLogout={onLogout}
+        />
+      )}
+    </>
   );
 }
 
@@ -49,10 +76,24 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   header: {
-    gap: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  menuBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logoutButton: {
     flexDirection: 'row',
@@ -64,7 +105,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.78)',
     borderWidth: 1,
     borderColor: colors.border,
-    minWidth: 104,
+    minWidth: 94,
     justifyContent: 'center',
   },
   logoutText: {

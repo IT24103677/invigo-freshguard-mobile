@@ -1,5 +1,12 @@
+const mongoose = require('mongoose');
 const Supplier = require('../models/Supplier');
 const asyncHandler = require('../utils/asyncHandler');
+const {
+  storeSupplierLogo,
+  findSupplierLogo,
+  deleteSupplierLogo,
+  openSupplierLogoDownloadStream,
+} = require('../config/gridfs');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^[+\d\s().-]{7,20}$/;
@@ -211,10 +218,67 @@ const deleteSupplier = asyncHandler(async (req, res) => {
   res.json({ message: 'Supplier deleted successfully.' });
 });
 
+const uploadSupplierLogoHandler = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid supplier id.' });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ message: 'No logo file provided.' });
+  }
+
+  const supplier = await Supplier.findById(req.params.id);
+  if (!supplier) return res.status(404).json({ message: 'Supplier not found.' });
+
+  if (supplier.logoFileId) {
+    await deleteSupplierLogo(supplier.logoFileId).catch(() => null);
+  }
+
+  const stored = await storeSupplierLogo({
+    supplierId: supplier._id,
+    buffer: req.file.buffer,
+    mimetype: req.file.mimetype,
+    originalName: req.file.originalname,
+  });
+
+  supplier.logoFileId = stored._id;
+  supplier.logoUpdatedAt = new Date();
+  await supplier.save();
+
+  res.json(serialiseSupplier(supplier));
+});
+
+const getSupplierLogoHandler = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid supplier id.' });
+  }
+
+  const supplier = await Supplier.findById(req.params.id);
+  if (!supplier) return res.status(404).json({ message: 'Supplier not found.' });
+
+  if (!supplier.logoFileId) {
+    return res.status(404).json({ message: 'No logo for this supplier.' });
+  }
+
+  const file = await findSupplierLogo(supplier.logoFileId);
+  if (!file) return res.status(404).json({ message: 'Logo file not found.' });
+
+  res.set('Content-Type', file.contentType || 'image/jpeg');
+  res.set('Cache-Control', 'public, max-age=31536000');
+
+  const stream = openSupplierLogoDownloadStream(supplier.logoFileId);
+  stream.on('error', () => {
+    if (!res.headersSent) res.status(500).json({ message: 'Failed to stream logo.' });
+  });
+  stream.pipe(res);
+});
+
 module.exports = {
   getSuppliers,
   createSupplier,
   getSupplierById,
   updateSupplier,
   deleteSupplier,
+  uploadSupplierLogoHandler,
+  getSupplierLogoHandler,
 };

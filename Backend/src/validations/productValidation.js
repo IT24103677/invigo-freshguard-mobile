@@ -13,6 +13,20 @@ const createProductSchema = Joi.object({
   imageUrl: Joi.string().uri().allow('', null).optional(),
 });
 
+const updateProductSchema = Joi.object({
+  name: Joi.string().trim().min(2).optional(),
+  category: Joi.string().trim().min(2).optional(),
+  sku: Joi.string().trim().allow('', null).optional(),
+  barcode: Joi.string().trim().allow('', null).optional(),
+  brand: Joi.string().trim().allow('', null).optional(),
+  supplier: Joi.string().trim().allow('', null).optional(),
+  unitType: Joi.string().trim().min(1).optional(),
+  buyingPrice: Joi.number().min(0).optional(),
+  sellingPrice: Joi.number().min(0).optional(),
+  imageUrl: Joi.string().uri().allow('', null).optional(),
+}).min(1);
+
 module.exports = {
   createProductSchema,
+  updateProductSchema,
 };

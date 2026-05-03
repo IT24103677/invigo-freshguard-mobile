@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { createSupplier, deleteSupplier, getSuppliers, updateSupplier } from '../api';
+import * as ImagePicker from 'expo-image-picker';
+import { createSupplier, deleteSupplier, getSupplierLogoUrl, getSuppliers, updateSupplier, uploadSupplierLogo } from '../api';
 import Card from '../components/Card';
 import FormInput from '../components/FormInput';
 import PrimaryButton, { GhostButton } from '../components/PrimaryButton';
@@ -57,6 +58,8 @@ function normaliseSupplier(raw) {
     email: raw?.email || '',
     phone: raw?.phone || '',
     lastOrderDate: raw?.lastOrderDate || '',
+    logoFileId: raw?.logoFileId || null,
+    logoUpdatedAt: raw?.logoUpdatedAt || null,
   };
 }
 
@@ -123,15 +126,37 @@ function OptionSelector({ label, options, value, onChange, activeColor = colors.
   );
 }
 
+function SupplierLogo({ supplier, size = 48 }) {
+  const [imgError, setImgError] = useState(false);
+  const uri = !imgError && supplier?.logoFileId
+    ? getSupplierLogoUrl(supplier.id, supplier.logoUpdatedAt)
+    : null;
+  const color = statusColor(supplier.status);
+
+  if (!uri) {
+    return (
+      <View style={[styles.avatar, { width: size, height: size, borderRadius: size * 0.35, backgroundColor: color }]}>
+        <Text style={styles.avatarText}>{String(supplier.supplierName || '?').slice(0, 2).toUpperCase()}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri }}
+      style={{ width: size, height: size, borderRadius: size * 0.35 }}
+      onError={() => setImgError(true)}
+    />
+  );
+}
+
 function SupplierCard({ supplier, onEdit, onDelete }) {
   const color = statusColor(supplier.status);
 
   return (
     <Card style={styles.supplierCard}>
       <View style={styles.supplierTop}>
-        <View style={[styles.avatar, { backgroundColor: color }]}>
-          <Text style={styles.avatarText}>{String(supplier.supplierName || '?').slice(0, 2).toUpperCase()}</Text>
-        </View>
+        <SupplierLogo supplier={supplier} size={48} />
         <View style={{ flex: 1 }}>
           <Text style={styles.supplierName}>{supplier.supplierName}</Text>
           <Text style={styles.supplierMeta}>{supplier.contactPerson || 'No contact person'} | {supplier.category || 'General'}</Text>
@@ -204,7 +229,7 @@ function DeleteSupplierModal({ supplier, visible, loading, onCancel, onConfirm }
   );
 }
 
-function SupplierModal({ visible, onClose, onSubmit, initialSupplier, loading }) {
+function SupplierModal({ visible, onClose, onSubmit, onLogoUpload, initialSupplier, loading, uploadingLogo }) {
   const isEdit = Boolean(initialSupplier);
   const [form, setForm] = useState({
     supplierName: '',
@@ -357,6 +382,19 @@ function SupplierModal({ visible, onClose, onSubmit, initialSupplier, loading })
 
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
             {!!error && <Text style={styles.error}>{error}</Text>}
+
+            {isEdit && (
+              <Pressable
+                style={styles.logoUploadBtn}
+                onPress={() => onLogoUpload(initialSupplier)}
+                disabled={uploadingLogo}
+              >
+                <SupplierLogo supplier={initialSupplier} size={44} />
+                <Text style={styles.logoUploadText}>{uploadingLogo ? 'Uploading...' : 'Change supplier logo'}</Text>
+                <Ionicons name="camera-outline" size={18} color={colors.emerald} />
+              </Pressable>
+            )}
+
             <FormInput label="Supplier Name" icon="business-outline" value={form.supplierName} onChangeText={(value) => update('supplierName', value)} placeholder="Fresh Valley Farms" />
             <FormInput label="Contact Person" icon="person-outline" value={form.contactPerson} onChangeText={(value) => update('contactPerson', value)} placeholder="Supplier contact name" />
             <FormInput label="Email" icon="mail-outline" value={form.email} onChangeText={(value) => update('email', value)} placeholder="supplier@example.com" keyboardType="email-address" />
@@ -385,6 +423,7 @@ export default function SupplierManagementScreen({ go, sessionUser, onLogout }) 
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalSupplier, setModalSupplier] = useState(null);
@@ -462,6 +501,36 @@ export default function SupplierManagementScreen({ go, sessionUser, onLogout }) 
     }
   }
 
+  async function handleLogoUpload(supplier) {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission required', 'Allow photo library access to upload a supplier logo.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    setUploadingLogo(true);
+    try {
+      const asset = result.assets[0];
+      const updated = await uploadSupplierLogo(supplier.id, asset);
+      const savedSupplier = normaliseSupplier(updated);
+      setSuppliers((current) => current.map((s) => s.id === savedSupplier.id ? savedSupplier : s));
+      setModalSupplier(savedSupplier);
+    } catch (uploadError) {
+      Alert.alert('Upload failed', uploadError.message || 'Could not upload logo.');
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
+
   function confirmDeleteSupplier(supplier) {
     setDeleteTarget(supplier);
   }
@@ -488,6 +557,9 @@ export default function SupplierManagementScreen({ go, sessionUser, onLogout }) 
           pillLabel="Supplier Management"
           pillIcon="business-outline"
           onLogout={onLogout}
+          go={go}
+          role={sessionUser?.role}
+          sessionUser={sessionUser}
         />
         <Card style={styles.restrictedCard}>
           <Text style={styles.sectionTitle}>Admin Access Required</Text>
@@ -505,6 +577,9 @@ export default function SupplierManagementScreen({ go, sessionUser, onLogout }) 
         pillLabel="Supplier Management"
         pillIcon="business-outline"
         onLogout={onLogout}
+        go={go}
+        role={sessionUser?.role}
+        sessionUser={sessionUser}
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -579,8 +654,10 @@ export default function SupplierManagementScreen({ go, sessionUser, onLogout }) 
         visible={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={submitSupplier}
+        onLogoUpload={handleLogoUpload}
         initialSupplier={modalSupplier}
         loading={saving}
+        uploadingLogo={uploadingLogo}
       />
 
       <DeleteSupplierModal
@@ -658,4 +735,6 @@ const styles = StyleSheet.create({
   restrictedCard: { marginTop: 20 },
   restrictedText: { marginTop: 8, color: 'rgba(15,23,42,0.58)', fontWeight: '700', lineHeight: 22 },
   sectionTitle: { color: colors.slate, fontSize: 20, fontWeight: '900', marginTop: 4 },
+  logoUploadBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: 'rgba(255,255,255,0.65)' },
+  logoUploadText: { flex: 1, color: colors.emerald, fontWeight: '800', fontSize: 13 },
 });

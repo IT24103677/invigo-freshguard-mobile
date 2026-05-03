@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { createUser, deleteUser, getLoginHistory, getUsers, unlockUser, updateUser } from '../api';
+import { createUser, deleteUser, getUsers, updateUser } from '../api';
 import Card from '../components/Card';
 import FormInput from '../components/FormInput';
 import PrimaryButton, { GhostButton } from '../components/PrimaryButton';
@@ -117,7 +117,6 @@ function normaliseUser(user) {
     id: user?.id || user?._id,
     role: cleanRole(user?.role || 'STAFF'),
     status: user?.status || 'ACTIVE',
-    accountLocked: Boolean(user?.accountLocked),
   };
 }
 
@@ -133,14 +132,6 @@ function Stat({ label, value, icon, color }) {
   );
 }
 
-function TabButton({ active, title, onPress, badge }) {
-  return (
-    <Pressable onPress={onPress} style={[styles.tabBtn, active && styles.tabBtnActive]}>
-      <Text style={[styles.tabText, active && styles.tabTextActive]}>{title}</Text>
-      {!!badge && <Text style={styles.badge}>{badge}</Text>}
-    </Pressable>
-  );
-}
 
 function RoleSelector({ value, onChange }) {
   return (
@@ -163,8 +154,7 @@ function RoleSelector({ value, onChange }) {
   );
 }
 
-function UserCard({ user, onEdit, onDelete, onUnlock }) {
-  const locked = Boolean(user.accountLocked);
+function UserCard({ user, onEdit, onDelete }) {
   const isAdmin = cleanRole(user.role) === 'ADMIN';
   const canEdit = !isAdmin;
 
@@ -178,7 +168,6 @@ function UserCard({ user, onEdit, onDelete, onUnlock }) {
           <Text style={styles.userName}>{user.name || 'Unnamed User'}</Text>
           <Text style={styles.userMeta}>@{user.username || '-'} | {user.email || 'no email'}</Text>
         </View>
-        {locked && <Ionicons name="lock-closed" size={20} color={colors.danger} />}
       </View>
 
       <View style={styles.tagsRow}>
@@ -195,16 +184,8 @@ function UserCard({ user, onEdit, onDelete, onUnlock }) {
             <Text style={styles.smallBtnText}>Edit</Text>
           </Pressable>
         )}
-        {locked && (
-          <Pressable style={styles.smallBtn} onPress={() => onUnlock(user)}>
-            <Text style={[styles.smallBtnText, { color: colors.emerald }]}>Unlock</Text>
-          </Pressable>
-        )}
         {!isAdmin && (
-          <Pressable
-            style={styles.smallBtn}
-            onPress={() => onDelete(user)}
-          >
+          <Pressable style={styles.smallBtn} onPress={() => onDelete(user)}>
             <Text style={[styles.smallBtnText, { color: colors.danger }]}>Delete</Text>
           </Pressable>
         )}
@@ -419,9 +400,7 @@ function UserModal({ visible, onClose, onSubmit, initialUser, loading }) {
 }
 
 export default function AdminUsersScreen({ go, sessionUser, setSessionUser, onLogout }) {
-  const [activeTab, setActiveTab] = useState('users');
   const [users, setUsers] = useState([]);
-  const [history, setHistory] = useState([]);
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [loading, setLoading] = useState(false);
@@ -441,7 +420,6 @@ export default function AdminUsersScreen({ go, sessionUser, setSessionUser, onLo
   }, [users, query, roleFilter]);
 
   const activeUsers = users.filter((user) => String(user.status || 'ACTIVE').toUpperCase() === 'ACTIVE');
-  const lockedUsers = activeUsers.filter((user) => user.accountLocked && cleanRole(user.role) !== 'ADMIN');
   const staffCount = activeUsers.filter((user) => cleanRole(user.role) !== 'ADMIN').length;
   const adminCount = activeUsers.filter((user) => cleanRole(user.role) === 'ADMIN').length;
 
@@ -460,7 +438,6 @@ export default function AdminUsersScreen({ go, sessionUser, setSessionUser, onLo
       email: nextUser.email,
       doj: nextUser.doj,
       role: nextUser.role,
-      accountLocked: Boolean(nextUser.accountLocked),
       status: nextUser.status || 'ACTIVE',
       lastLoginAt: nextUser.lastLoginAt || sessionUser.lastLoginAt || '',
     };
@@ -472,30 +449,15 @@ export default function AdminUsersScreen({ go, sessionUser, setSessionUser, onLo
   async function loadData() {
     setLoading(true);
     setError('');
-
-    const [usersResult, historyResult] = await Promise.allSettled([
-      getUsers(),
-      getLoginHistory(),
-    ]);
-
-    const issues = [];
-
-    if (usersResult.status === 'fulfilled') {
-      setUsers((usersResult.value || []).map(normaliseUser));
-    } else {
+    try {
+      const data = await getUsers();
+      setUsers((data || []).map(normaliseUser));
+    } catch (e) {
       setUsers([]);
-      issues.push(usersResult.reason?.message || 'Could not load users.');
+      setError(e.message || 'Could not load users.');
+    } finally {
+      setLoading(false);
     }
-
-    if (historyResult.status === 'fulfilled') {
-      setHistory(historyResult.value || []);
-    } else {
-      setHistory([]);
-      issues.push(historyResult.reason?.message || 'Could not load login activity.');
-    }
-
-    setError(issues.join(' '));
-    setLoading(false);
   }
 
   function openCreate() {
@@ -558,22 +520,15 @@ export default function AdminUsersScreen({ go, sessionUser, setSessionUser, onLo
     ]);
   }
 
-  async function unlock(user) {
-    try {
-      const updatedUser = normaliseUser(await unlockUser(user.id));
-      setUsers((current) => current.map((item) => (item.id === user.id ? updatedUser : item)));
-      await syncCurrentSessionUser(updatedUser);
-    } catch (unlockError) {
-      Alert.alert('Failed', unlockError.message || 'Failed to unlock user.');
-    }
-  }
-
   return (
     <Screen scroll={false} style={{ paddingBottom: 0 }}>
       <WorkspaceHeader
         pillLabel="Admin User Management"
         pillIcon="people-outline"
         onLogout={onLogout}
+        go={go}
+        role={sessionUser?.role}
+        sessionUser={sessionUser}
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -599,78 +554,43 @@ export default function AdminUsersScreen({ go, sessionUser, setSessionUser, onLo
         <View style={styles.statsGrid}>
           <Stat label="Staff" value={staffCount} icon="people-outline" color={colors.emerald} />
           <Stat label="Admins" value={adminCount} icon="shield-outline" color={colors.purple} />
-          <Stat label="Locked" value={lockedUsers.length} icon="lock-closed-outline" color={colors.danger} />
+          <Stat label="Total" value={activeUsers.length} icon="person-outline" color={colors.slate} />
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
-          <TabButton title="Users" active={activeTab === 'users'} onPress={() => setActiveTab('users')} />
-          <TabButton title="Security" active={activeTab === 'security'} onPress={() => setActiveTab('security')} badge={lockedUsers.length || ''} />
-          <TabButton title="Suppliers" active={false} onPress={() => go('suppliers')} />
-        </ScrollView>
-
-        {activeTab === 'users' && (
-          <View style={styles.sectionGap}>
-            <View style={styles.sectionHeaderRow}>
-              <View>
-                <Text style={styles.sectionTitle}>User Accounts</Text>
-                <Text style={styles.sectionSub}>{filteredUsers.length} users found</Text>
-              </View>
-
-              <Pressable style={styles.compactAddBtn} onPress={openCreate}>
-                <Ionicons name="add" size={18} color="#fff" />
-                <Text style={styles.compactAddText}>Add</Text>
-              </Pressable>
+        <View style={styles.sectionGap}>
+          <View style={styles.sectionHeaderRow}>
+            <View>
+              <Text style={styles.sectionTitle}>User Accounts</Text>
+              <Text style={styles.sectionSub}>{filteredUsers.length} users found</Text>
             </View>
 
-            <FormInput label="Search Users" icon="search-outline" value={query} onChangeText={setQuery} placeholder="Search by name, username, or email" />
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-              {['ALL', 'ADMIN', 'STAFF'].map((role) => (
-                <Pressable
-                  key={role}
-                  onPress={() => setRoleFilter(role)}
-                  style={[styles.filterChip, roleFilter === role && styles.filterChipActive]}
-                >
-                  <Text style={[styles.filterText, roleFilter === role && styles.filterTextActive]}>
-                    {role === 'ALL' ? 'All Roles' : role}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-
-            {filteredUsers.map((user) => (
-              <UserCard key={user.id || user.username} user={user} onEdit={openEdit} onDelete={deleteAccount} onUnlock={unlock} />
-            ))}
-            {!filteredUsers.length && <Text style={styles.empty}>No users found.</Text>}
+            <Pressable style={styles.compactAddBtn} onPress={openCreate}>
+              <Ionicons name="add" size={18} color="#fff" />
+              <Text style={styles.compactAddText}>Add</Text>
+            </Pressable>
           </View>
-        )}
 
-        {activeTab === 'security' && (
-          <View style={styles.sectionGap}>
-            <Text style={styles.sectionTitle}>Locked Accounts</Text>
-            {lockedUsers.length ? (
-              lockedUsers.map((user) => (
-                <UserCard key={user.id} user={user} onEdit={openEdit} onDelete={deleteAccount} onUnlock={unlock} />
-              ))
-            ) : (
-              <Text style={styles.empty}>No locked non-admin users.</Text>
-            )}
+          <FormInput label="Search Users" icon="search-outline" value={query} onChangeText={setQuery} placeholder="Search by name, username, or email" />
 
-            <Text style={styles.sectionTitle}>Recent Login Activity</Text>
-            {history.slice(0, 8).map((item, index) => (
-              <Card key={item.id || index} style={styles.activityCard}>
-                <View style={styles.activityTop}>
-                  <Text style={styles.activityUser}>{item.username || item.email || 'Unknown user'}</Text>
-                  <Text style={[styles.activityStatus, String(item.status || '').toUpperCase().includes('FAIL') ? { color: colors.danger } : { color: colors.emerald }]}>
-                    {item.status || 'SUCCESS'}
-                  </Text>
-                </View>
-                <Text style={styles.activityTime}>{item.loginTime || item.createdAt || '--'}</Text>
-              </Card>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+            {['ALL', 'ADMIN', 'STAFF'].map((role) => (
+              <Pressable
+                key={role}
+                onPress={() => setRoleFilter(role)}
+                style={[styles.filterChip, roleFilter === role && styles.filterChipActive]}
+              >
+                <Text style={[styles.filterText, roleFilter === role && styles.filterTextActive]}>
+                  {role === 'ALL' ? 'All Roles' : role}
+                </Text>
+              </Pressable>
             ))}
-            {!history.length && <Text style={styles.empty}>No login activity available.</Text>}
-          </View>
-        )}
+          </ScrollView>
+
+          {filteredUsers.map((user) => (
+            <UserCard key={user.id || user.username} user={user} onEdit={openEdit} onDelete={deleteAccount} />
+          ))}
+          {!filteredUsers.length && <Text style={styles.empty}>No users found.</Text>}
+        </View>
       </ScrollView>
 
       <UserModal
@@ -719,12 +639,6 @@ const styles = StyleSheet.create({
   statIcon: { width: 36, height: 36, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   statValue: { color: colors.slate, fontSize: 24, fontWeight: '900' },
   statLabel: { color: 'rgba(15,23,42,0.48)', fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 },
-  tabsRow: { gap: 10, paddingBottom: 16 },
-  tabBtn: { paddingHorizontal: 16, height: 44, borderRadius: 18, borderWidth: 1, borderColor: colors.border, backgroundColor: 'rgba(255,255,255,0.6)', flexDirection: 'row', alignItems: 'center', gap: 7 },
-  tabBtnActive: { backgroundColor: colors.slate, borderColor: colors.slate },
-  tabText: { color: 'rgba(15,23,42,0.55)', fontWeight: '900', fontSize: 12 },
-  tabTextActive: { color: '#fff' },
-  badge: { overflow: 'hidden', color: '#fff', backgroundColor: colors.danger, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 99, fontSize: 10, fontWeight: '900' },
   sectionGap: { gap: 12 },
   filterRow: { gap: 8, paddingVertical: 2 },
   filterChip: { paddingHorizontal: 13, height: 38, borderRadius: 15, borderWidth: 1, borderColor: colors.border, backgroundColor: 'rgba(255,255,255,0.65)', alignItems: 'center', justifyContent: 'center' },
@@ -745,11 +659,6 @@ const styles = StyleSheet.create({
   smallBtnText: { color: colors.slate, fontWeight: '900', fontSize: 12 },
   empty: { color: 'rgba(15,23,42,0.5)', fontWeight: '800', textAlign: 'center', paddingVertical: 18 },
   sectionTitle: { color: colors.slate, fontSize: 20, fontWeight: '900', marginTop: 4 },
-  activityCard: { padding: 14, borderRadius: 24 },
-  activityTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' },
-  activityUser: { color: colors.slate, fontWeight: '900', flex: 1 },
-  activityStatus: { fontWeight: '900', fontSize: 11 },
-  activityTime: { color: 'rgba(15,23,42,0.46)', fontWeight: '700', marginTop: 6, fontSize: 12 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', justifyContent: 'flex-end' },
   modalCard: { maxHeight: '88%', backgroundColor: colors.background, borderTopLeftRadius: 34, borderTopRightRadius: 34, padding: 20 },
   modalTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },

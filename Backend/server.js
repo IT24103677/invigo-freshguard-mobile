@@ -12,6 +12,8 @@ const productRoutes = require('./src/routes/productRoutes');
 const batchRoutes = require('./src/routes/batchRoutes');
 const salesDashboardRoutes = require('./src/routes/salesDashboardRoutes');
 const saleRoutes = require('./src/routes/saleRoutes');
+const discountRoutes = require('./src/routes/discountRoutes');
+const reportRoutes   = require('./src/routes/reportRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -41,6 +43,8 @@ app.use('/api/batches', batchRoutes);
 app.use('/api/dashboard', salesDashboardRoutes);
 app.use('/api/sales', saleRoutes);
 app.use('/api/logins', loginRoutes);
+app.use('/api/discounts', discountRoutes);
+app.use('/api/reports',   reportRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: `Route not found: ${req.method} ${req.originalUrl}` });

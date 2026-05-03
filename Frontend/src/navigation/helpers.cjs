@@ -14,8 +14,8 @@ function getPublicRouteName(routeKey) {
 
 function getTabRouteKeys(role) {
   return normalizeRole(role) === 'ADMIN'
-    ? ['dashboard', 'adminUsers', 'suppliers', 'salesPos', 'salesHistory', 'salesReports']
-    : ['dashboard', 'profile', 'salesPos', 'salesHistory', 'salesReports'];
+    ? ['dashboard', 'adminUsers', 'suppliers', 'products', 'batches', 'salesPos', 'salesHistory', 'salesReports', 'alerts', 'discounts']
+    : ['dashboard', 'profile', 'salesPos', 'salesHistory', 'salesReports', 'discounts'];
 }
 
 function canAccessTab(role, routeKey) {

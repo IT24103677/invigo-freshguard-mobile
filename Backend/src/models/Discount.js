@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const batchSchema = new mongoose.Schema(
+const discountSchema = new mongoose.Schema(
   {
     productId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -8,61 +8,49 @@ const batchSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    batchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Batch',
+      required: true,
+      index: true,
+    },
+    productName: {
+      type: String,
+      trim: true,
+      default: null,
+    },
     batchNumber: {
       type: String,
       trim: true,
       default: null,
     },
-    receivedDate: {
-      type: Date,
-      required: true,
-    },
-    expiryDate: {
-      type: Date,
-      required: true,
-      index: true,
-    },
-    quantityOnHand: {
+    discountPercent: {
       type: Number,
       required: true,
-      min: 0,
+      min: 1,
+      max: 90,
     },
-    storageCondition: {
+    note: {
       type: String,
       trim: true,
       default: null,
     },
-    location: {
+    active: {
+      type: Boolean,
+      default: true,
+    },
+    source: {
       type: String,
-      trim: true,
-      default: null,
+      enum: ['MANUAL', 'AI'],
+      default: 'MANUAL',
     },
-    costPerUnit: {
-      type: Number,
-      min: 0,
-      default: null,
-    },
-    supplierName: {
-      type: String,
-      trim: true,
-      default: null,
-    },
-    notes: {
-      type: String,
-      trim: true,
-      default: null,
-    },
-    documentFileId: {
+    promotionImageFileId: {
       type: mongoose.Schema.Types.ObjectId,
       default: null,
     },
-    documentUpdatedAt: {
+    promotionImageUpdatedAt: {
       type: Date,
       default: null,
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -70,14 +58,13 @@ const batchSchema = new mongoose.Schema(
       default: null,
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-batchSchema.index({ productId: 1, expiryDate: 1 });
+discountSchema.index({ batchId: 1, active: 1 });
+discountSchema.index({ productId: 1, active: 1 });
 
-batchSchema.set('toJSON', {
+discountSchema.set('toJSON', {
   virtuals: true,
   versionKey: false,
   transform: (doc, ret) => {
@@ -86,4 +73,4 @@ batchSchema.set('toJSON', {
   },
 });
 
-module.exports = mongoose.model('Batch', batchSchema);
+module.exports = mongoose.model('Discount', discountSchema);

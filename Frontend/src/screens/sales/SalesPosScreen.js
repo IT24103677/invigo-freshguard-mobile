@@ -40,6 +40,7 @@ function getStockFilterLabel(value) {
 }
 
 export default function SalesPosScreen({
+  go,
   sessionUser,
   onLogout,
   onOpenCheckout,
@@ -179,6 +180,9 @@ export default function SalesPosScreen({
             pillLabel={`${String(sessionUser?.role || 'STAFF').toUpperCase()} Sales Workspace`}
             pillIcon="cart-outline"
             onLogout={onLogout}
+            go={go}
+            role={sessionUser?.role}
+            sessionUser={sessionUser}
           />
 
           <View style={styles.searchWrap}>
