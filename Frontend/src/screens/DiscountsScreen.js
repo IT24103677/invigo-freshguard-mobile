@@ -3,6 +3,7 @@ import {
   Alert,
   Image,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -74,6 +75,15 @@ function PromoImage({ discount, size = 52 }) {
       onError={() => setErr(true)}
     />
   );
+}
+
+async function ensureImageLibraryAccess() {
+  if (Platform.OS === 'web') {
+    return true;
+  }
+
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  return status === 'granted';
 }
 
 // ── Stat tile ──────────────────────────────────────────────────────────────────
@@ -430,8 +440,8 @@ export default function DiscountsScreen({ go, sessionUser, onLogout }) {
   }
 
   async function handlePromoUpload(discount) {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
+    const allowed = await ensureImageLibraryAccess();
+    if (!allowed) {
       Alert.alert('Permission required', 'Allow photo library access to upload a promotion image.');
       return;
     }

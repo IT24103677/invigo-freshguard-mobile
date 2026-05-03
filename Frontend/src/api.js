@@ -11,6 +11,19 @@ export function setUnauthorizedHandler(handler) {
   unauthorizedHandler = typeof handler === 'function' ? handler : null;
 }
 
+function appendUploadAsset(formData, fieldName, asset, fallbackName, fallbackType) {
+  if (asset?.file) {
+    formData.append(fieldName, asset.file);
+    return;
+  }
+
+  formData.append(fieldName, {
+    uri: asset?.uri,
+    name: asset?.name || asset?.fileName || fallbackName,
+    type: asset?.mimeType || asset?.type || fallbackType,
+  });
+}
+
 async function parseError(response, fallback) {
   const err = await response.json().catch(() => ({}));
   return err.message || err.error || `${fallback} (${response.status})`;
@@ -118,16 +131,13 @@ export async function getCurrentUser() {
 }
 
 function appendAvatarToFormData(formData, asset) {
-  if (asset?.file) {
-    formData.append('avatar', asset.file);
-    return;
-  }
-
-  formData.append('avatar', {
-    uri: asset.uri,
-    name: asset.fileName || `profile-photo-${Date.now()}.jpg`,
-    type: asset.mimeType || 'image/jpeg',
-  });
+  appendUploadAsset(
+    formData,
+    'avatar',
+    asset,
+    `profile-photo-${Date.now()}.jpg`,
+    'image/jpeg'
+  );
 }
 
 export async function uploadMyProfileAvatar(asset) {
@@ -225,15 +235,7 @@ export async function deleteSupplier(id) {
 
 export async function uploadSupplierLogo(supplierId, asset) {
   const formData = new FormData();
-  if (asset?.file) {
-    formData.append('logo', asset.file);
-  } else {
-    formData.append('logo', {
-      uri: asset.uri,
-      name: asset.fileName || `supplier-logo-${Date.now()}.jpg`,
-      type: asset.mimeType || 'image/jpeg',
-    });
-  }
+  appendUploadAsset(formData, 'logo', asset, `supplier-logo-${Date.now()}.jpg`, 'image/jpeg');
 
   const response = await request(`/admin/suppliers/${supplierId}/logo`, {
     method: 'POST',
@@ -292,15 +294,7 @@ export async function deleteProduct(id) {
 
 export async function uploadProductImage(productId, asset) {
   const formData = new FormData();
-  if (asset?.file) {
-    formData.append('image', asset.file);
-  } else {
-    formData.append('image', {
-      uri: asset.uri,
-      name: asset.fileName || `product-image-${Date.now()}.jpg`,
-      type: asset.mimeType || 'image/jpeg',
-    });
-  }
+  appendUploadAsset(formData, 'image', asset, `product-image-${Date.now()}.jpg`, 'image/jpeg');
 
   const response = await request(`/products/${productId}/image`, {
     method: 'POST',
@@ -360,15 +354,13 @@ export async function deleteBatch(id) {
 
 export async function uploadBatchDocument(batchId, asset) {
   const formData = new FormData();
-  if (asset?.file) {
-    formData.append('document', asset.file);
-  } else {
-    formData.append('document', {
-      uri: asset.uri,
-      name: asset.fileName || `batch-document-${Date.now()}.pdf`,
-      type: asset.mimeType || 'application/pdf',
-    });
-  }
+  appendUploadAsset(
+    formData,
+    'document',
+    asset,
+    `batch-document-${Date.now()}.pdf`,
+    'application/pdf'
+  );
 
   const response = await request(`/batches/${batchId}/document`, {
     method: 'POST',
@@ -446,16 +438,7 @@ export async function voidSale(id, voidReason) {
 
 export async function uploadSaleReceipt(saleId, asset) {
   const formData = new FormData();
-
-  if (asset?.file) {
-    formData.append('receipt', asset.file);
-  } else {
-    formData.append('receipt', {
-      uri: asset.uri,
-      name: asset.fileName || `receipt-${Date.now()}.jpg`,
-      type: asset.mimeType || 'image/jpeg',
-    });
-  }
+  appendUploadAsset(formData, 'receipt', asset, `receipt-${Date.now()}.jpg`, 'image/jpeg');
 
   const response = await request(`/sales/${saleId}/receipt`, {
     method: 'POST',
@@ -504,11 +487,7 @@ export async function deleteDiscount(id) {
 
 export async function uploadDiscountPromoImage(id, asset) {
   const formData = new FormData();
-  formData.append('image', {
-    uri: asset.uri,
-    name: asset.fileName || `promo-${Date.now()}.jpg`,
-    type: asset.mimeType || 'image/jpeg',
-  });
+  appendUploadAsset(formData, 'image', asset, `promo-${Date.now()}.jpg`, 'image/jpeg');
   const response = await request(`/discounts/${id}/image`, {
     method: 'POST',
     body: formData,
@@ -565,15 +544,13 @@ export async function deleteReport(id) {
 export async function uploadReportAttachment(id, file) {
   // file: { uri, name, mimeType } from expo-document-picker or expo-image-picker
   const formData = new FormData();
-  if (file?.file) {
-    formData.append('attachment', file.file);
-  } else {
-    formData.append('attachment', {
-      uri:  file.uri,
-      name: file.name || file.fileName || `attachment-${Date.now()}`,
-      type: file.mimeType || file.type || 'application/octet-stream',
-    });
-  }
+  appendUploadAsset(
+    formData,
+    'attachment',
+    file,
+    `attachment-${Date.now()}`,
+    'application/octet-stream'
+  );
   const response = await request(`/reports/${id}/attachment`, {
     method: 'POST',
     body:   formData,

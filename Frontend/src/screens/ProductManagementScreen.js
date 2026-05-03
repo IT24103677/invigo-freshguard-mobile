@@ -3,6 +3,7 @@ import {
   Alert,
   Image,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -138,6 +139,15 @@ function ProductImage({ product, size = 52 }) {
       onError={() => setError(true)}
     />
   );
+}
+
+async function ensureImageLibraryAccess() {
+  if (Platform.OS === 'web') {
+    return true;
+  }
+
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  return status === 'granted';
 }
 
 function ProductCard({ product, onEdit, onDelete, isAdmin }) {
@@ -443,8 +453,8 @@ export default function ProductManagementScreen({ go, sessionUser, onLogout }) {
   }
 
   async function handleImageUpload(product) {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
+    const allowed = await ensureImageLibraryAccess();
+    if (!allowed) {
       Alert.alert('Permission required', 'Allow photo library access to upload a product image.');
       return;
     }

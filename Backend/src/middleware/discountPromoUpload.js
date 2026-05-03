@@ -1,18 +1,35 @@
 const multer = require('multer');
+const {
+  MAX_DISCOUNT_PROMO_IMAGE_SIZE_BYTES,
+  isAllowedDiscountPromoImageType,
+} = require('../utils/discountPromoImage');
 
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
-
-const storage = multer.memoryStorage();
-
-const fileFilter = (req, file, cb) => {
-  if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_DISCOUNT_PROMO_IMAGE_SIZE_BYTES },
+  fileFilter: (req, file, cb) => {
+    if (!isAllowedDiscountPromoImageType(file?.mimetype)) {
+      cb(new Error('Please upload a JPG, PNG, or WEBP image.'));
+      return;
+    }
     cb(null, true);
-  } else {
-    cb(new Error('Only JPG, PNG, and WEBP images are allowed for promotion images.'), false);
-  }
-};
+  },
+});
 
-const upload = multer({ storage, fileFilter, limits: { fileSize: MAX_SIZE_BYTES } });
+function uploadDiscountPromoImage(req, res, next) {
+  upload.single('image')(req, res, (error) => {
+    if (!error) {
+      next();
+      return;
+    }
 
-module.exports = { uploadDiscountPromoImage: upload.single('image') };
+    if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+      res.status(400).json({ message: 'Promotion image must be 5 MB or smaller.' });
+      return;
+    }
+
+    res.status(400).json({ message: error.message || 'Invalid promotion image upload.' });
+  });
+}
+
+module.exports = { uploadDiscountPromoImage };

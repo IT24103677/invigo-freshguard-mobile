@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Linking,
   Modal,
   Pressable,
   RefreshControl,
@@ -10,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import {
   createBatch,
   deleteBatch,
@@ -29,6 +30,26 @@ import WorkspaceHeader from '../components/WorkspaceHeader';
 import { colors } from '../theme';
 
 const STORAGE_CONDITIONS = ['Refrigerated', 'Frozen', 'Ambient', 'Cool & Dry', 'Other'];
+const BATCH_DOCUMENT_TYPES = ['image/*', 'application/pdf'];
+
+async function pickBatchDocument() {
+  const result = await DocumentPicker.getDocumentAsync({
+    type: BATCH_DOCUMENT_TYPES,
+    copyToCacheDirectory: true,
+  });
+
+  if (result.canceled || !result.assets?.length) {
+    return null;
+  }
+
+  const file = result.assets[0];
+  return {
+    uri: file.uri,
+    name: file.name,
+    mimeType: file.mimeType || file.type || 'application/octet-stream',
+    file: file.file || null,
+  };
+}
 
 function normalizeBatch(raw) {
   const product = raw?.productId || {};
@@ -83,7 +104,7 @@ function ChipButton({ title, active, onPress }) {
   );
 }
 
-function BatchCard({ batch, onEdit, onDelete, onUploadDocument, isAdmin }) {
+function BatchCard({ batch, onEdit, onDelete, onUploadDocument, onViewDocument, isAdmin }) {
   const status = expiryStatus(batch.expiryDate);
   const hasDoc = Boolean(batch.documentFileId);
 
@@ -134,6 +155,11 @@ function BatchCard({ batch, onEdit, onDelete, onUploadDocument, isAdmin }) {
           <Pressable style={styles.smallBtn} onPress={() => onEdit(batch)} hitSlop={8}>
             <Text style={styles.smallBtnText}>Edit</Text>
           </Pressable>
+          {hasDoc ? (
+            <Pressable style={styles.smallBtn} onPress={() => onViewDocument(batch)} hitSlop={8}>
+              <Text style={styles.smallBtnText}>View Doc</Text>
+            </Pressable>
+          ) : null}
           <Pressable style={styles.smallBtn} onPress={() => onUploadDocument(batch)} hitSlop={8}>
             <Text style={styles.smallBtnText}>{hasDoc ? 'Replace Doc' : 'Upload Doc'}</Text>
           </Pressable>
@@ -443,24 +469,12 @@ export default function BatchManagementScreen({ go, sessionUser, onLogout }) {
   }
 
   async function handleDocumentUpload(batch) {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission required', 'Allow photo library access to upload a batch document.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: false,
-      quality: 0.85,
-    });
-
-    if (result.canceled || !result.assets?.[0]) return;
+    const file = await pickBatchDocument();
+    if (!file) return;
 
     setUploadingDoc(true);
     try {
-      const asset = result.assets[0];
-      const updated = normalizeBatch(await uploadBatchDocument(batch.id, asset));
+      const updated = normalizeBatch(await uploadBatchDocument(batch.id, file));
       setBatches((cur) => cur.map((b) => b.id === updated.id ? updated : b));
       Alert.alert('Success', 'Batch document uploaded successfully.');
     } catch (e) {
@@ -468,6 +482,14 @@ export default function BatchManagementScreen({ go, sessionUser, onLogout }) {
     } finally {
       setUploadingDoc(false);
     }
+  }
+
+  function handleViewDocument(batch) {
+    const url = getBatchDocumentUrl(batch.id, batch.documentUpdatedAt);
+
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Open failed', 'Could not open the batch document right now.');
+    });
   }
 
   async function performDelete() {
@@ -549,6 +571,7 @@ export default function BatchManagementScreen({ go, sessionUser, onLogout }) {
               onEdit={(b) => { setModalBatch(b); setModalOpen(true); }}
               onDelete={setDeleteTarget}
               onUploadDocument={handleDocumentUpload}
+              onViewDocument={handleViewDocument}
               isAdmin={isAdmin}
             />
           ))}

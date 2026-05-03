@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Modal, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { createSupplier, deleteSupplier, getSupplierLogoUrl, getSuppliers, updateSupplier, uploadSupplierLogo } from '../api';
@@ -124,6 +124,15 @@ function OptionSelector({ label, options, value, onChange, activeColor = colors.
       </View>
     </View>
   );
+}
+
+async function ensureImageLibraryAccess() {
+  if (Platform.OS === 'web') {
+    return true;
+  }
+
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  return status === 'granted';
 }
 
 function SupplierLogo({ supplier, size = 48 }) {
@@ -502,8 +511,8 @@ export default function SupplierManagementScreen({ go, sessionUser, onLogout }) 
   }
 
   async function handleLogoUpload(supplier) {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
+    const allowed = await ensureImageLibraryAccess();
+    if (!allowed) {
       Alert.alert('Permission required', 'Allow photo library access to upload a supplier logo.');
       return;
     }
